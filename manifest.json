@@ -1,0 +1,17 @@
+{
+  "name": "GALTON-TEMPO",
+  "short_name": "GaltonTempo",
+  "description": "Physics-based metronome and rhythm machine inspired by the Galton Board",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FF8C00",
+  "background_color": "#000000",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

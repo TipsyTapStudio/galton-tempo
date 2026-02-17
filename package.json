@@ -1,0 +1,14 @@
+{
+  "name": "galton-tempo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --outfile=dist/bundle.js --format=iife --sourcemap && esbuild src/workers/timer-worker.ts --bundle --outfile=dist/timer-worker.js --format=iife --sourcemap",
+    "dev": "esbuild src/main.ts --bundle --outfile=dist/bundle.js --format=iife --sourcemap --watch=forever --servedir=.",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}
