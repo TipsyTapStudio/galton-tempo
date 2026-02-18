@@ -42,6 +42,15 @@
         totalMs += msg.addMs;
         tick();
         break;
+      case "ADJUST":
+        totalMs = msg.totalMs;
+        if (paused) {
+          pausedElapsedMs = msg.elapsedMs;
+        } else if (running) {
+          startAbsMs = performance.now() - (msg.elapsedMs - pausedElapsedMs);
+        }
+        tick();
+        break;
       case "PAUSE":
         if (running && !paused) {
           const now = performance.now();

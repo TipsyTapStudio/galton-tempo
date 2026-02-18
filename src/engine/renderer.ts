@@ -85,6 +85,7 @@ export class Renderer {
     currentBar: number,
     totalBars: number,
     beatInBar: number,
+    beatPhase: number = 0,
   ): void {
     const L = this.layout;
     const ctx = this.gr.dCtx;
@@ -98,16 +99,17 @@ export class Renderer {
       ctx.fillRect(0, 0, L.width * progress, 2);
     }
 
-    // BPM display (large, center)
-    const digitH = Math.min(L.width * 0.22, L.height * 0.25);
-    drawBPM(ctx, bpm, L.centerX, L.height / 2, digitH, this.currentTheme);
+    // BPM display (smaller, above hopper)
+    const digitH = Math.min(L.width * 0.14, L.height * 0.16);
+    const bpmY = L.hopperTop - digitH * 0.8;
+    drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
 
     // "BPM" label below digits
     const [lr, lg, lb] = this.currentTheme.segmentRGB;
     ctx.fillStyle = `rgba(${lr},${lg},${lb},0.25)`;
     ctx.font = `400 ${Math.max(10, digitH * 0.12)}px "JetBrains Mono", monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText('BPM', L.centerX, L.height / 2 + digitH / 2 + digitH * 0.15);
+    ctx.fillText('BPM', L.centerX, bpmY + digitH / 2 + digitH * 0.15);
 
     // Bar counter (inline, above hopper)
     const barText = `BAR ${currentBar + 1} / ${totalBars}`;
@@ -136,7 +138,7 @@ export class Renderer {
     this.gr.drawHopper(ctx, L, emittedCount, totalParticles);
 
     // Pegs
-    this.gr.drawPegs(ctx, L, this.currentTheme);
+    this.gr.drawPegs(ctx, L, this.currentTheme, undefined, beatPhase);
 
     // Moving particles
     this.gr.drawParticles(ctx, L, particles);

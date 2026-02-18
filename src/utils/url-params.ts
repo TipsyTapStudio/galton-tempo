@@ -13,7 +13,7 @@ export interface AppParams {
 }
 
 const VALID_SOUNDS = ['click', 'kick', 'both'];
-const VALID_THEMES = ['nixie', 'system', 'studio', 'cyber'];
+const VALID_THEMES = ['tempo', 'nixie', 'system', 'studio', 'cyber'];
 const VALID_MODES = ['standard', 'heavy sand', 'techno', 'moon gravity', 'super ball'];
 
 const DEFAULTS: AppParams = {
@@ -22,7 +22,7 @@ const DEFAULTS: AppParams = {
   rows: 24,
   s: 0,
   sound: 'click',
-  theme: 'nixie',
+  theme: 'tempo',
   mode: 'standard',
 };
 

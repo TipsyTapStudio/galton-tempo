@@ -4,7 +4,7 @@
   "description": "Physics-based metronome and rhythm machine inspired by the Galton Board",
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#FF8C00",
+  "theme_color": "#FF1493",
   "background_color": "#000000",
   "icons": [
     {

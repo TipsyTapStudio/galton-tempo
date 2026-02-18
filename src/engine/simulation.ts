@@ -276,6 +276,15 @@ export class Simulation {
     return Math.min(this.totalParticles, Math.floor(this.elapsedMs / this.emitIntervalMs));
   }
 
+  /** Update BPM (emission rate) while preserving beat position. Returns new totalTimeMs. */
+  updateBpm(newBpm: number): number {
+    const currentBeat = this.getCurrentBeat();
+    this.emitIntervalMs = 60000 / newBpm;
+    this.elapsedMs = currentBeat * this.emitIntervalMs;
+    this.totalTimeMs = this.totalParticles * this.emitIntervalMs;
+    return this.totalTimeMs;
+  }
+
   /** Get current bar (0-based). */
   getCurrentBar(beatsPerBar: number): number {
     return Math.floor(this.getCurrentBeat() / beatsPerBar);

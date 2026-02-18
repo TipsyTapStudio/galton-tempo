@@ -113,6 +113,11 @@ consoleCtrl.onBpmChange = (bpm: number) => {
   if (appState === 'idle') {
     rebuildSim();
     drawIdleFrame();
+  } else if (appState === 'running' || appState === 'paused') {
+    const currentBeat = sim.getCurrentBeat();
+    const newTotalMs = sim.updateBpm(bpm);
+    timerBridge.adjust(newTotalMs, sim.elapsedMs);
+    lastBeatIndex = currentBeat - 1;
   }
 };
 
@@ -369,6 +374,8 @@ function frame(now: number): void {
   const currentBar = Math.floor(currentBeat / BEATS_PER_BAR);
   const beatInBar = currentBeat % BEATS_PER_BAR;
 
+  const beatPhase = (sim.elapsedMs % sim.emitIntervalMs) / sim.emitIntervalMs;
+
   renderer.drawFrame(
     sim.activeParticles,
     params.bpm,
@@ -377,6 +384,7 @@ function frame(now: number): void {
     currentBar,
     params.bars,
     beatInBar,
+    beatPhase,
   );
 
   if (!sim.allSettled) {

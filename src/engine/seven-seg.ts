@@ -41,6 +41,7 @@ export interface ClockTheme {
 }
 
 export const CLOCK_THEMES: ClockTheme[] = [
+  { name: 'Tempo',  segmentRGB: [255, 20, 147],   grainRGB: [255, 120, 190], glowIntensity: 1.2 },
   { name: 'Nixie',  segmentRGB: [255, 147, 41],  grainRGB: [255, 180, 100], glowIntensity: 1.2 },
   { name: 'System', segmentRGB: [0, 255, 65],     grainRGB: [120, 255, 140], glowIntensity: 0.8 },
   { name: 'Studio', segmentRGB: [220, 220, 230],  grainRGB: [230, 230, 240], glowIntensity: 1.0 },

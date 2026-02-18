@@ -2,7 +2,7 @@
 (() => {
   // src/utils/url-params.ts
   var VALID_SOUNDS = ["click", "kick", "both"];
-  var VALID_THEMES = ["nixie", "system", "studio", "cyber"];
+  var VALID_THEMES = ["tempo", "nixie", "system", "studio", "cyber"];
   var VALID_MODES = ["standard", "heavy sand", "techno", "moon gravity", "super ball"];
   var DEFAULTS = {
     bpm: 120,
@@ -10,7 +10,7 @@
     rows: 24,
     s: 0,
     sound: "click",
-    theme: "nixie",
+    theme: "tempo",
     mode: "standard"
   };
   function readParams() {
@@ -263,6 +263,14 @@
     getCurrentBeat() {
       return Math.min(this.totalParticles, Math.floor(this.elapsedMs / this.emitIntervalMs));
     }
+    /** Update BPM (emission rate) while preserving beat position. Returns new totalTimeMs. */
+    updateBpm(newBpm) {
+      const currentBeat = this.getCurrentBeat();
+      this.emitIntervalMs = 6e4 / newBpm;
+      this.elapsedMs = currentBeat * this.emitIntervalMs;
+      this.totalTimeMs = this.totalParticles * this.emitIntervalMs;
+      return this.totalTimeMs;
+    }
     /** Get current bar (0-based). */
     getCurrentBar(beatsPerBar) {
       return Math.floor(this.getCurrentBeat() / beatsPerBar);
@@ -345,6 +353,7 @@
     // 9
   ];
   var CLOCK_THEMES = [
+    { name: "Tempo", segmentRGB: [255, 20, 147], grainRGB: [255, 120, 190], glowIntensity: 1.2 },
     { name: "Nixie", segmentRGB: [255, 147, 41], grainRGB: [255, 180, 100], glowIntensity: 1.2 },
     { name: "System", segmentRGB: [0, 255, 65], grainRGB: [120, 255, 140], glowIntensity: 0.8 },
     { name: "Studio", segmentRGB: [220, 220, 230], grainRGB: [230, 230, 240], glowIntensity: 1 },
@@ -480,7 +489,7 @@
     const pegSpacing = Math.min(dxFromWidth, dxFromRatio);
     const rowSpacingY = pegSpacing * SQRT3_2;
     const boardH = numRows > 1 ? (numRows - 1) * rowSpacingY : 0;
-    const grainRadius = Math.max(1.2, Math.min(3.5, pegSpacing * 0.09));
+    const grainRadius = Math.max(2.5, Math.min(8, pegSpacing * 0.25));
     const pegRadius = Math.max(1.5, Math.min(5, pegSpacing * 0.12));
     const nozzleHW = pegSpacing * 0.8;
     const gridHW = numRows * pegSpacing / 2;
@@ -619,7 +628,7 @@
   var PI2 = Math.PI * 2;
   var GRAIN_ALPHA = 0.85;
   var GRAIN_GLOW_ALPHA = 0.06;
-  var GRAIN_GLOW_SCALE = 2.5;
+  var GRAIN_GLOW_SCALE = 3;
   var STATIC_GRAIN_ALPHA = 1;
   var GrainRenderer = class {
     constructor(container2) {
@@ -793,7 +802,7 @@
       }
       ctx.restore();
     }
-    drawPegs(ctx, L, theme, pegAlphaOverride) {
+    drawPegs(ctx, L, theme, pegAlphaOverride, beatPhase = 0) {
       const [pr, pg, pb] = theme.segmentRGB;
       const alpha = pegAlphaOverride !== void 0 ? pegAlphaOverride : 0.15;
       const themeWeight = pegAlphaOverride !== void 0 && pegAlphaOverride > 0.5 ? 0.6 : 0.3;
@@ -812,6 +821,37 @@
         }
       }
       ctx.fill();
+      if (beatPhase > 0 && pegAlphaOverride === void 0) {
+        const cx = L.centerX;
+        const cy = (L.boardTop + L.boardBottom) / 2;
+        let maxDist = 0;
+        for (let row = 0; row < L.numRows; row++) {
+          for (let j = 0; j <= row; j++) {
+            const px = pegX(L, row, j);
+            const py = pegY(L, row);
+            const d = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+            if (d > maxDist) maxDist = d;
+          }
+        }
+        if (maxDist < 1) maxDist = 1;
+        const waveRadius = maxDist * beatPhase;
+        const thickness = L.pegSpacing * 1.5;
+        for (let row = 0; row < L.numRows; row++) {
+          for (let j = 0; j <= row; j++) {
+            const px = pegX(L, row, j);
+            const py = pegY(L, row);
+            const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+            const proximity = 1 - Math.abs(dist - waveRadius) / thickness;
+            if (proximity <= 0) continue;
+            const glowAlpha = proximity * (1 - beatPhase * 0.6) * 0.45;
+            if (glowAlpha <= 0) continue;
+            ctx.fillStyle = `rgba(${pr},${pg},${pb},${glowAlpha.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(px, py, L.pegRadius * 1.8, 0, PI2);
+            ctx.fill();
+          }
+        }
+      }
     }
     drawParticles(ctx, L, particles) {
       if (particles.length === 0) return;
@@ -934,7 +974,7 @@
     bakeParticle(p) {
       this.gr.bakeParticle(this.layout, p);
     }
-    drawFrame(particles, bpm, totalParticles, emittedCount, currentBar, totalBars, beatInBar) {
+    drawFrame(particles, bpm, totalParticles, emittedCount, currentBar, totalBars, beatInBar, beatPhase = 0) {
       const L = this.layout;
       const ctx = this.gr.dCtx;
       ctx.clearRect(0, 0, L.width, L.height);
@@ -944,13 +984,14 @@
         ctx.fillStyle = `rgba(${r},${g},${b},0.60)`;
         ctx.fillRect(0, 0, L.width * progress, 2);
       }
-      const digitH = Math.min(L.width * 0.22, L.height * 0.25);
-      drawBPM(ctx, bpm, L.centerX, L.height / 2, digitH, this.currentTheme);
+      const digitH = Math.min(L.width * 0.14, L.height * 0.16);
+      const bpmY = L.hopperTop - digitH * 0.8;
+      drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
       const [lr, lg, lb] = this.currentTheme.segmentRGB;
       ctx.fillStyle = `rgba(${lr},${lg},${lb},0.25)`;
       ctx.font = `400 ${Math.max(10, digitH * 0.12)}px "JetBrains Mono", monospace`;
       ctx.textAlign = "center";
-      ctx.fillText("BPM", L.centerX, L.height / 2 + digitH / 2 + digitH * 0.15);
+      ctx.fillText("BPM", L.centerX, bpmY + digitH / 2 + digitH * 0.15);
       const barText = `BAR ${currentBar + 1} / ${totalBars}`;
       ctx.fillStyle = `rgba(${lr},${lg},${lb},0.35)`;
       ctx.font = `500 ${Math.max(10, L.height * 0.018)}px "JetBrains Mono", monospace`;
@@ -969,7 +1010,7 @@
         ctx.fill();
       }
       this.gr.drawHopper(ctx, L, emittedCount, totalParticles);
-      this.gr.drawPegs(ctx, L, this.currentTheme);
+      this.gr.drawPegs(ctx, L, this.currentTheme, void 0, beatPhase);
       this.gr.drawParticles(ctx, L, particles);
     }
     clearStatic() {
@@ -1013,6 +1054,9 @@
     }
     addTime(addMs) {
       this.worker.postMessage({ type: "ADD_TIME", addMs });
+    }
+    adjust(totalMs, elapsedMs) {
+      this.worker.postMessage({ type: "ADJUST", totalMs, elapsedMs });
     }
     pause() {
       this.worker.postMessage({ type: "PAUSE" });
@@ -1539,6 +1583,7 @@
     themeStrip.className = "gt-theme-strip";
     const themeChips = [];
     const LED_COLORS = {
+      tempo: "#FF1493",
       nixie: "#FF8C00",
       system: "#00FF41",
       studio: "#FFFFFF",
@@ -1652,12 +1697,6 @@
         barsDisplay.value = String(bars);
       },
       setConfigEnabled(enabled) {
-        bpmSlider.disabled = !enabled;
-        bpmDisplay.disabled = !enabled;
-        bpmMinusBtn.disabled = !enabled;
-        bpmPlusBtn.disabled = !enabled;
-        for (const btn of bpmPresetBtns) btn.disabled = !enabled;
-        bpmHint.style.display = enabled ? "none" : "";
         barsSlider.disabled = !enabled;
         barsDisplay.disabled = !enabled;
         barsMinusBtn.disabled = !enabled;
@@ -1737,6 +1776,11 @@
     if (appState === "idle") {
       rebuildSim();
       drawIdleFrame();
+    } else if (appState === "running" || appState === "paused") {
+      const currentBeat = sim.getCurrentBeat();
+      const newTotalMs = sim.updateBpm(bpm);
+      timerBridge.adjust(newTotalMs, sim.elapsedMs);
+      lastBeatIndex = currentBeat - 1;
     }
   };
   consoleCtrl.onBarsChange = (bars) => {
@@ -1935,6 +1979,7 @@
     const currentBeat = sim.getCurrentBeat();
     const currentBar = Math.floor(currentBeat / BEATS_PER_BAR);
     const beatInBar = currentBeat % BEATS_PER_BAR;
+    const beatPhase = sim.elapsedMs % sim.emitIntervalMs / sim.emitIntervalMs;
     renderer.drawFrame(
       sim.activeParticles,
       params.bpm,
@@ -1942,7 +1987,8 @@
       sim.emittedCount,
       currentBar,
       params.bars,
-      beatInBar
+      beatInBar,
+      beatPhase
     );
     if (!sim.allSettled) {
       rafId = requestAnimationFrame(frame);

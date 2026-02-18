@@ -17,7 +17,7 @@ const PI2 = Math.PI * 2;
 
 const GRAIN_ALPHA = 0.85;
 const GRAIN_GLOW_ALPHA = 0.06;
-const GRAIN_GLOW_SCALE = 2.5;
+const GRAIN_GLOW_SCALE = 3.0;
 const STATIC_GRAIN_ALPHA = 1.0;
 
 export class GrainRenderer {
@@ -227,7 +227,7 @@ export class GrainRenderer {
     ctx.restore();
   }
 
-  drawPegs(ctx: CanvasRenderingContext2D, L: Layout, theme: ClockTheme, pegAlphaOverride?: number): void {
+  drawPegs(ctx: CanvasRenderingContext2D, L: Layout, theme: ClockTheme, pegAlphaOverride?: number, beatPhase: number = 0): void {
     const [pr, pg, pb] = theme.segmentRGB;
     const alpha = pegAlphaOverride !== undefined ? pegAlphaOverride : 0.15;
     const themeWeight = (pegAlphaOverride !== undefined && pegAlphaOverride > 0.5) ? 0.6 : 0.3;
@@ -235,6 +235,8 @@ export class GrainRenderer {
     const blendR = Math.round(pr * themeWeight + 180 * grayWeight);
     const blendG = Math.round(pg * themeWeight + 180 * grayWeight);
     const blendB = Math.round(pb * themeWeight + 180 * grayWeight);
+
+    // Base pass: all pegs at normal alpha
     ctx.fillStyle = `rgba(${blendR},${blendG},${blendB},${alpha.toFixed(3)})`;
     ctx.beginPath();
     for (let row = 0; row < L.numRows; row++) {
@@ -246,6 +248,41 @@ export class GrainRenderer {
       }
     }
     ctx.fill();
+
+    // Glow pass: concentric pulse wave from center outward
+    if (beatPhase > 0 && pegAlphaOverride === undefined) {
+      const cx = L.centerX;
+      const cy = (L.boardTop + L.boardBottom) / 2;
+      let maxDist = 0;
+      for (let row = 0; row < L.numRows; row++) {
+        for (let j = 0; j <= row; j++) {
+          const px = pegX(L, row, j);
+          const py = pegY(L, row);
+          const d = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+          if (d > maxDist) maxDist = d;
+        }
+      }
+      if (maxDist < 1) maxDist = 1;
+
+      const waveRadius = maxDist * beatPhase;
+      const thickness = L.pegSpacing * 1.5;
+
+      for (let row = 0; row < L.numRows; row++) {
+        for (let j = 0; j <= row; j++) {
+          const px = pegX(L, row, j);
+          const py = pegY(L, row);
+          const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+          const proximity = 1 - Math.abs(dist - waveRadius) / thickness;
+          if (proximity <= 0) continue;
+          const glowAlpha = proximity * (1 - beatPhase * 0.6) * 0.45;
+          if (glowAlpha <= 0) continue;
+          ctx.fillStyle = `rgba(${pr},${pg},${pb},${glowAlpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(px, py, L.pegRadius * 1.8, 0, PI2);
+          ctx.fill();
+        }
+      }
+    }
   }
 
   drawParticles(ctx: CanvasRenderingContext2D, L: Layout, particles: Particle[]): void {

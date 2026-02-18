@@ -6,11 +6,12 @@
 
 interface StartMsg { type: 'START'; totalMs: number; startAbsMs: number }
 interface AddTimeMsg { type: 'ADD_TIME'; addMs: number }
+interface AdjustMsg { type: 'ADJUST'; totalMs: number; elapsedMs: number }
 interface PauseMsg { type: 'PAUSE' }
 interface ResumeMsg { type: 'RESUME'; resumeAbsMs: number }
 interface ResetMsg { type: 'RESET' }
 
-type InMsg = StartMsg | AddTimeMsg | PauseMsg | ResumeMsg | ResetMsg;
+type InMsg = StartMsg | AddTimeMsg | AdjustMsg | PauseMsg | ResumeMsg | ResetMsg;
 
 let totalMs = 0;
 let startAbsMs = 0;
@@ -58,6 +59,16 @@ self.onmessage = (e: MessageEvent<InMsg>) => {
 
     case 'ADD_TIME':
       totalMs += msg.addMs;
+      tick();
+      break;
+
+    case 'ADJUST':
+      totalMs = msg.totalMs;
+      if (paused) {
+        pausedElapsedMs = msg.elapsedMs;
+      } else if (running) {
+        startAbsMs = performance.now() - (msg.elapsedMs - pausedElapsedMs);
+      }
       tick();
       break;
 

@@ -483,7 +483,7 @@ export function createConsole(
   const themeChips: HTMLButtonElement[] = [];
 
   const LED_COLORS: Record<string, string> = {
-    nixie: '#FF8C00', system: '#00FF41', studio: '#FFFFFF', cyber: '#00D1FF',
+    tempo: '#FF1493', nixie: '#FF8C00', system: '#00FF41', studio: '#FFFFFF', cyber: '#00D1FF',
   };
 
   for (const t of CLOCK_THEMES) {
@@ -592,12 +592,8 @@ export function createConsole(
       barsDisplay.value = String(bars);
     },
     setConfigEnabled(enabled: boolean) {
-      bpmSlider.disabled = !enabled;
-      bpmDisplay.disabled = !enabled;
-      bpmMinusBtn.disabled = !enabled;
-      bpmPlusBtn.disabled = !enabled;
-      for (const btn of bpmPresetBtns) btn.disabled = !enabled;
-      bpmHint.style.display = enabled ? 'none' : '';
+      // BPM: always enabled (live tempo change)
+      // Bars only
       barsSlider.disabled = !enabled;
       barsDisplay.disabled = !enabled;
       barsMinusBtn.disabled = !enabled;
