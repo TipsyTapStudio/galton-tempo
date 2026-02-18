@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "esbuild src/main.ts --bundle --outfile=dist/bundle.js --format=iife --sourcemap && esbuild src/workers/timer-worker.ts --bundle --outfile=dist/timer-worker.js --format=iife --sourcemap",
-    "dev": "esbuild src/main.ts --bundle --outfile=dist/bundle.js --format=iife --sourcemap --watch=forever --servedir=.",
+    "dev": "esbuild src/workers/timer-worker.ts --bundle --outfile=dist/timer-worker.js --format=iife --sourcemap && esbuild src/main.ts --bundle --outfile=dist/bundle.js --format=iife --sourcemap --watch=forever --servedir=.",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

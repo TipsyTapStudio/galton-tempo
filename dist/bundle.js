@@ -491,7 +491,7 @@
     const pegSpacing = Math.min(dxFromWidth, dxFromRatio);
     const rowSpacingY = pegSpacing * SQRT3_2;
     const boardH = numRows > 1 ? (numRows - 1) * rowSpacingY : 0;
-    const grainRadius = Math.max(2.5, Math.min(8, pegSpacing * 0.25));
+    const grainRadius = Math.max(3, Math.min(8, pegSpacing * 0.25));
     const pegRadius = Math.max(1.5, Math.min(5, pegSpacing * 0.12));
     const nozzleHW = pegSpacing * 0.8;
     const gridHW = numRows * pegSpacing / 2;
@@ -519,7 +519,7 @@
     const rowH_natural = d_natural * SQRT3_2;
     const peakCeiling = accHeight * 0.95;
     const stackRowH = maxBinCount > 0 ? Math.min(rowH_natural, peakCeiling / maxBinCount) : rowH_natural;
-    const miniGrainR = Math.max(0.8, grainRadius * 0.55);
+    const miniGrainR = Math.max(1.5, grainRadius * 0.55);
     let finalHopperTop = hopperTop;
     let finalHopperJunction = hopperJunction;
     let finalHopperBottom = hopperBottom;
@@ -986,29 +986,20 @@
         ctx.fillStyle = `rgba(${r},${g},${b},0.60)`;
         ctx.fillRect(0, 0, L.width * progress, 2);
       }
-      const digitH = Math.min(L.width * 0.08, L.height * 0.1);
-      const bpmY = Math.max(digitH * 0.6, L.hopperTop - digitH * 0.8);
-      drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
       const [lr, lg, lb] = this.currentTheme.segmentRGB;
-      ctx.fillStyle = `rgba(${lr},${lg},${lb},0.25)`;
-      ctx.font = `400 ${Math.max(10, digitH * 0.12)}px "JetBrains Mono", monospace`;
-      ctx.textAlign = "center";
-      ctx.fillText("BPM", L.centerX, bpmY + digitH / 2 + digitH * 0.15);
-      const barText = `BAR ${currentBar + 1} / ${totalBars}`;
-      ctx.fillStyle = `rgba(${lr},${lg},${lb},0.35)`;
-      ctx.font = `500 ${Math.max(10, L.height * 0.018)}px "JetBrains Mono", monospace`;
-      ctx.textAlign = "center";
-      ctx.fillText(barText, L.centerX, L.inlineTimerY);
-      const dotY = L.inlineTimerY + L.height * 0.025;
+      const digitH = Math.min(L.width * 0.025, L.height * 0.03);
+      const bpmY = L.inlineTimerY;
+      drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
       const dotR = Math.max(2, L.height * 4e-3);
-      const dotGap = dotR * 4;
+      const dotGap = dotR * 5;
+      const dotY = bpmY + digitH / 2 + dotR * 3.5;
       const dotsStartX = L.centerX - 3 * dotGap / 2;
       for (let i = 0; i < 4; i++) {
         const dx = dotsStartX + i * dotGap;
         const isActive = i === beatInBar;
-        ctx.fillStyle = isActive ? `rgba(${lr},${lg},${lb},0.9)` : `rgba(${lr},${lg},${lb},0.15)`;
+        ctx.fillStyle = isActive ? `rgba(${lr},${lg},${lb},0.9)` : `rgba(${lr},${lg},${lb},0.12)`;
         ctx.beginPath();
-        ctx.arc(dx, dotY, isActive ? dotR * 1.3 : dotR, 0, Math.PI * 2);
+        ctx.arc(dx, dotY, isActive ? dotR * 1.5 : dotR, 0, Math.PI * 2);
         ctx.fill();
       }
       this.gr.drawHopper(ctx, L, emittedCount, totalParticles);
@@ -1897,7 +1888,7 @@
     }
   };
   timerBridge.onDone = () => {
-    sim.allEmitted = true;
+    sim.setElapsedMs(sim.totalTimeMs);
   };
   var consoleCtrl = createConsole(
     params.bpm,
@@ -2100,6 +2091,7 @@
         for (const p of forcedSettled) renderer.bakeParticle(p);
         const snapped = sim.instantSnap(geom);
         for (const p of snapped) renderer.bakeParticle(p);
+        sim.allSettled = false;
         lastTime = null;
         rafId = requestAnimationFrame(frame);
       } else if (appState === "stopping") {
@@ -2146,12 +2138,13 @@
       beatInBar,
       beatPhase
     );
-    if (!sim.allSettled) {
-      rafId = requestAnimationFrame(frame);
-    } else {
+    const trulyDone = sim.allSettled && sim.emittedCount >= sim.totalParticles;
+    if (trulyDone) {
       appState = "idle";
       consoleCtrl.setPaused(true);
       consoleCtrl.setConfigEnabled(true);
+    } else {
+      rafId = requestAnimationFrame(frame);
     }
   }
   appState = "idle";

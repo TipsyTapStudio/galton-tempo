@@ -99,38 +99,25 @@ export class Renderer {
       ctx.fillRect(0, 0, L.width * progress, 2);
     }
 
-    // BPM display (smaller, above hopper)
-    const digitH = Math.min(L.width * 0.08, L.height * 0.10);
-    const bpmY = Math.max(digitH * 0.6, L.hopperTop - digitH * 0.8);
+    // BPM display — small, unobtrusive
+    const [lr, lg, lb] = this.currentTheme.segmentRGB;
+    const digitH = Math.min(L.width * 0.025, L.height * 0.03);
+    const bpmY = L.inlineTimerY;
     drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
 
-    // "BPM" label below digits
-    const [lr, lg, lb] = this.currentTheme.segmentRGB;
-    ctx.fillStyle = `rgba(${lr},${lg},${lb},0.25)`;
-    ctx.font = `400 ${Math.max(10, digitH * 0.12)}px "JetBrains Mono", monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText('BPM', L.centerX, bpmY + digitH / 2 + digitH * 0.15);
-
-    // Bar counter (inline, above hopper)
-    const barText = `BAR ${currentBar + 1} / ${totalBars}`;
-    ctx.fillStyle = `rgba(${lr},${lg},${lb},0.35)`;
-    ctx.font = `500 ${Math.max(10, L.height * 0.018)}px "JetBrains Mono", monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(barText, L.centerX, L.inlineTimerY);
-
     // Beat indicator dots (4 dots, current one highlighted)
-    const dotY = L.inlineTimerY + L.height * 0.025;
     const dotR = Math.max(2, L.height * 0.004);
-    const dotGap = dotR * 4;
+    const dotGap = dotR * 5;
+    const dotY = bpmY + digitH / 2 + dotR * 3.5;
     const dotsStartX = L.centerX - (3 * dotGap) / 2;
     for (let i = 0; i < 4; i++) {
       const dx = dotsStartX + i * dotGap;
       const isActive = i === beatInBar;
       ctx.fillStyle = isActive
         ? `rgba(${lr},${lg},${lb},0.9)`
-        : `rgba(${lr},${lg},${lb},0.15)`;
+        : `rgba(${lr},${lg},${lb},0.12)`;
       ctx.beginPath();
-      ctx.arc(dx, dotY, isActive ? dotR * 1.3 : dotR, 0, Math.PI * 2);
+      ctx.arc(dx, dotY, isActive ? dotR * 1.5 : dotR, 0, Math.PI * 2);
       ctx.fill();
     }
 

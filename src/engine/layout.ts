@@ -65,7 +65,7 @@ export function computeLayout(
   const rowSpacingY = pegSpacing * SQRT3_2;
   const boardH = numRows > 1 ? (numRows - 1) * rowSpacingY : 0;
 
-  const grainRadius = Math.max(2.5, Math.min(8.0, pegSpacing * 0.25));
+  const grainRadius = Math.max(3.0, Math.min(8.0, pegSpacing * 0.25));
   const pegRadius = Math.max(1.5, Math.min(5.0, pegSpacing * 0.12));
 
   const nozzleHW = pegSpacing * 0.8;
@@ -104,7 +104,7 @@ export function computeLayout(
     ? Math.min(rowH_natural, peakCeiling / maxBinCount)
     : rowH_natural;
 
-  const miniGrainR = Math.max(0.8, grainRadius * 0.55);
+  const miniGrainR = Math.max(1.5, grainRadius * 0.55);
 
   // Vertical centering
   let finalHopperTop = hopperTop;

@@ -75,8 +75,10 @@ timerBridge.onTick = (_remainingMs, elapsedMs) => {
 };
 
 timerBridge.onDone = () => {
-  // All beats emitted and timer done — let particles settle
-  sim.allEmitted = true;
+  // Timer expired — ensure elapsedMs covers all beats so update() emits remaining
+  // Do NOT set sim.allEmitted directly; let the emission count in update() handle it.
+  // This prevents a race where allEmitted=true before all particles are actually emitted.
+  sim.setElapsedMs(sim.totalTimeMs);
 };
 
 // ── Console ──
@@ -342,6 +344,10 @@ document.addEventListener('visibilitychange', () => {
       const snapped = sim.instantSnap(geom);
       for (const p of snapped) renderer.bakeParticle(p);
 
+      // Reset allSettled so the loop doesn't stop immediately
+      // (update() will re-evaluate on next frame)
+      sim.allSettled = false;
+
       lastTime = null;
       rafId = requestAnimationFrame(frame);
     } else if (appState === 'stopping') {
@@ -401,13 +407,16 @@ function frame(now: number): void {
     beatPhase,
   );
 
-  if (!sim.allSettled) {
-    rafId = requestAnimationFrame(frame);
-  } else {
-    // Done — all particles have settled
+  // Safety: only stop when ALL particles have been both emitted AND settled
+  const trulyDone = sim.allSettled
+    && sim.emittedCount >= sim.totalParticles;
+
+  if (trulyDone) {
     appState = 'idle';
     consoleCtrl.setPaused(true);
     consoleCtrl.setConfigEnabled(true);
+  } else {
+    rafId = requestAnimationFrame(frame);
   }
 }
 
