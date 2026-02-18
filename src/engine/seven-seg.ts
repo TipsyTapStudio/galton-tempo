@@ -106,6 +106,7 @@ export function drawDigit(
   segments: boolean[],
   rgb: [number, number, number],
   glowIntensity: number,
+  noGlow: boolean = false,
 ): void {
   const thickness = Math.max(1.2, w * 0.07);
 
@@ -114,12 +115,14 @@ export function drawDigit(
 
   for (let s = 0; s < 7; s++) {
     if (segments[s]) {
-      const glowAlpha = 0.09 * glowIntensity;
-      for (let pass = 0; pass < 6; pass++) {
-        ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(glowAlpha * glowAlphaFactors[pass]).toFixed(4)})`;
-        ctx.beginPath();
-        drawSegmentPath(ctx, x, y, w, h, s, thickness * glowScales[pass]);
-        ctx.fill();
+      if (!noGlow) {
+        const glowAlpha = 0.09 * glowIntensity;
+        for (let pass = 0; pass < 6; pass++) {
+          ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(glowAlpha * glowAlphaFactors[pass]).toFixed(4)})`;
+          ctx.beginPath();
+          drawSegmentPath(ctx, x, y, w, h, s, thickness * glowScales[pass]);
+          ctx.fill();
+        }
       }
 
       ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.85)`;
@@ -157,7 +160,7 @@ export function drawBPM(
   const startY = cy - digitH / 2;
 
   for (const d of digits) {
-    drawDigit(ctx, dx, startY, digitW, digitH, DIGIT_SEGMENTS[d], rgb, glow);
+    drawDigit(ctx, dx, startY, digitW, digitH, DIGIT_SEGMENTS[d], rgb, glow, true);
     dx += digitW + gap;
   }
 }

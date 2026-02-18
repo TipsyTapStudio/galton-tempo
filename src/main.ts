@@ -84,6 +84,7 @@ timerBridge.onDone = () => {
 const consoleCtrl = createConsole(
   params.bpm,
   params.bars,
+  params.rows,
   params.theme,
   params.sound as SoundType,
   params.mode,
@@ -123,6 +124,15 @@ consoleCtrl.onBpmChange = (bpm: number) => {
 
 consoleCtrl.onBarsChange = (bars: number) => {
   params.bars = bars;
+  writeParams(params);
+  if (appState === 'idle') {
+    rebuildSim();
+    drawIdleFrame();
+  }
+};
+
+consoleCtrl.onRowsChange = (rows: number) => {
+  params.rows = rows;
   writeParams(params);
   if (appState === 'idle') {
     rebuildSim();
@@ -248,9 +258,9 @@ async function startFresh(): Promise<void> {
   await audio.ensureContext();
 
   rebuildSim();
-  lastBeatIndex = -1;
+  lastBeatIndex = 0;
 
-  const totalMs = totalBeats() * (60000 / params.bpm);
+  const totalMs = Math.max(0, (totalBeats() - 1)) * (60000 / params.bpm);
 
   paused = false;
   appState = 'running';
@@ -263,6 +273,10 @@ async function startFresh(): Promise<void> {
   };
 
   timerBridge.start(totalMs);
+
+  // Play initial beat immediately (beat 0 at time 0)
+  audio.playBeat(true);
+
   lastTime = null;
   rafId = requestAnimationFrame(frame);
 }

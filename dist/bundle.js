@@ -160,7 +160,7 @@
       this.numRows = cfg.numRows;
       this.totalParticles = cfg.totalBeats;
       this.emitIntervalMs = 6e4 / cfg.bpm;
-      this.totalTimeMs = cfg.totalBeats * this.emitIntervalMs;
+      this.totalTimeMs = Math.max(0, cfg.totalBeats - 1) * this.emitIntervalMs;
       this.rng = cfg.rng;
       this.binCounts = new Array(cfg.numRows + 1).fill(0);
     }
@@ -170,7 +170,7 @@
       if (!this.allEmitted) {
         const expectedEmitted = Math.min(
           this.totalParticles,
-          Math.floor(this.elapsedMs / this.emitIntervalMs)
+          1 + Math.floor(this.elapsedMs / this.emitIntervalMs)
         );
         const toEmit = expectedEmitted - this.emittedCount;
         for (let i = 0; i < toEmit; i++) {
@@ -261,14 +261,14 @@
     }
     /** Get current beat index (0-based). */
     getCurrentBeat() {
-      return Math.min(this.totalParticles, Math.floor(this.elapsedMs / this.emitIntervalMs));
+      return Math.min(this.totalParticles, 1 + Math.floor(this.elapsedMs / this.emitIntervalMs));
     }
     /** Update BPM (emission rate) while preserving beat position. Returns new totalTimeMs. */
     updateBpm(newBpm) {
       const currentBeat = this.getCurrentBeat();
       this.emitIntervalMs = 6e4 / newBpm;
       this.elapsedMs = currentBeat * this.emitIntervalMs;
-      this.totalTimeMs = this.totalParticles * this.emitIntervalMs;
+      this.totalTimeMs = Math.max(0, this.totalParticles - 1) * this.emitIntervalMs;
       return this.totalTimeMs;
     }
     /** Get current bar (0-based). */
@@ -278,7 +278,7 @@
     instantSnap(geom) {
       const expectedEmitted = Math.min(
         this.totalParticles,
-        Math.floor(this.elapsedMs / this.emitIntervalMs)
+        1 + Math.floor(this.elapsedMs / this.emitIntervalMs)
       );
       const toEmit = expectedEmitted - this.emittedCount;
       if (toEmit <= 0) return [];
@@ -431,18 +431,20 @@
       ctx.closePath();
     }
   }
-  function drawDigit(ctx, x, y, w, h, segments, rgb, glowIntensity) {
+  function drawDigit(ctx, x, y, w, h, segments, rgb, glowIntensity, noGlow = false) {
     const thickness = Math.max(1.2, w * 0.07);
     const glowScales = [5.5, 4.5, 3.5, 2.8, 2.2, 1.8];
     const glowAlphaFactors = [0.5, 0.7, 1, 1, 1.2, 1.2];
     for (let s = 0; s < 7; s++) {
       if (segments[s]) {
-        const glowAlpha = 0.09 * glowIntensity;
-        for (let pass = 0; pass < 6; pass++) {
-          ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(glowAlpha * glowAlphaFactors[pass]).toFixed(4)})`;
-          ctx.beginPath();
-          drawSegmentPath(ctx, x, y, w, h, s, thickness * glowScales[pass]);
-          ctx.fill();
+        if (!noGlow) {
+          const glowAlpha = 0.09 * glowIntensity;
+          for (let pass = 0; pass < 6; pass++) {
+            ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(glowAlpha * glowAlphaFactors[pass]).toFixed(4)})`;
+            ctx.beginPath();
+            drawSegmentPath(ctx, x, y, w, h, s, thickness * glowScales[pass]);
+            ctx.fill();
+          }
         }
         ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.85)`;
         ctx.beginPath();
@@ -466,7 +468,7 @@
     let dx = cx - totalW / 2;
     const startY = cy - digitH / 2;
     for (const d of digits) {
-      drawDigit(ctx, dx, startY, digitW, digitH, DIGIT_SEGMENTS[d], rgb, glow);
+      drawDigit(ctx, dx, startY, digitW, digitH, DIGIT_SEGMENTS[d], rgb, glow, true);
       dx += digitW + gap;
     }
   }
@@ -823,7 +825,7 @@
       ctx.fill();
       if (beatPhase > 0 && pegAlphaOverride === void 0) {
         const cx = L.centerX;
-        const cy = (L.boardTop + L.boardBottom) / 2;
+        const cy = L.boardTop + (L.boardBottom - L.boardTop) * (2 / 3);
         let maxDist = 0;
         for (let row = 0; row < L.numRows; row++) {
           for (let j = 0; j <= row; j++) {
@@ -984,8 +986,8 @@
         ctx.fillStyle = `rgba(${r},${g},${b},0.60)`;
         ctx.fillRect(0, 0, L.width * progress, 2);
       }
-      const digitH = Math.min(L.width * 0.14, L.height * 0.16);
-      const bpmY = L.hopperTop - digitH * 0.8;
+      const digitH = Math.min(L.width * 0.08, L.height * 0.1);
+      const bpmY = Math.max(digitH * 0.6, L.hopperTop - digitH * 0.8);
       drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
       const [lr, lg, lb] = this.currentTheme.segmentRGB;
       ctx.fillStyle = `rgba(${lr},${lg},${lb},0.25)`;
@@ -1144,17 +1146,35 @@
     playKick(time, accent) {
       const ctx = this.ctx;
       const osc = ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(accent ? 160 : 120, time);
-      osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(accent ? 220 : 180, time);
+      osc.frequency.exponentialRampToValueAtTime(50, time + 0.1);
       const gain = ctx.createGain();
-      const vol = accent ? 0.6 : 0.4;
+      const vol = accent ? 0.7 : 0.5;
       gain.gain.setValueAtTime(vol, time);
-      gain.gain.exponentialRampToValueAtTime(1e-3, time + 0.25);
+      gain.gain.exponentialRampToValueAtTime(1e-3, time + 0.2);
       osc.connect(gain);
       gain.connect(this.masterGain);
       osc.start(time);
-      osc.stop(time + 0.3);
+      osc.stop(time + 0.25);
+      const bufLen = Math.ceil(ctx.sampleRate * 0.015);
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(accent ? 0.4 : 0.25, time);
+      noiseGain.gain.exponentialRampToValueAtTime(1e-3, time + 0.015);
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 800;
+      bp.Q.value = 1.5;
+      noise.connect(bp);
+      bp.connect(noiseGain);
+      noiseGain.connect(this.masterGain);
+      noise.start(time);
+      noise.stop(time + 0.02);
     }
   };
 
@@ -1319,10 +1339,11 @@
       }
     };
   }
-  function createConsole(initialBpm, initialBars, initialTheme, initialSound, initialMode) {
+  function createConsole(initialBpm, initialBars, initialRows, initialTheme, initialSound, initialMode) {
     injectStyles();
     let currentBpm = initialBpm;
     let currentBars = initialBars;
+    let currentRows = initialRows;
     const creditsEl = document.createElement("div");
     creditsEl.className = "gt-credits";
     creditsEl.textContent = "Crafted by Tipsy Tap Studio";
@@ -1416,6 +1437,7 @@
       currentBpm = v;
       bpmSlider.value = String(v);
       bpmDisplay.value = String(v);
+      updateDuration();
       ctrl.onBpmChange?.(v);
     }
     bpmSlider.addEventListener("input", () => {
@@ -1423,6 +1445,7 @@
       currentBpm = v;
       bpmDisplay.value = String(v);
       bpmPresetBtns.forEach((b) => b.classList.remove("active"));
+      updateDuration();
       ctrl.onBpmChange?.(v);
     });
     bpmDisplay.addEventListener("change", () => {
@@ -1507,6 +1530,7 @@
       currentBars = v;
       barsSlider.value = String(Math.min(128, v));
       barsDisplay.value = String(v);
+      updateDuration();
       ctrl.onBarsChange?.(v);
     }
     barsSlider.addEventListener("input", () => {
@@ -1514,6 +1538,7 @@
       currentBars = v;
       barsDisplay.value = String(v);
       barsPresetBtns.forEach((b) => b.classList.remove("active"));
+      updateDuration();
       ctrl.onBarsChange?.(v);
     });
     barsDisplay.addEventListener("change", () => {
@@ -1538,9 +1563,116 @@
     barsRow.appendChild(barsSlider);
     barsRow.appendChild(barsDisplay);
     barsRow.appendChild(barsPlusBtn);
+    const durationRow = document.createElement("div");
+    durationRow.className = "gt-field-row";
+    durationRow.style.marginTop = "-2px";
+    const durationLabel = document.createElement("span");
+    durationLabel.className = "gt-field-label";
+    durationLabel.style.fontSize = "10px";
+    durationLabel.style.opacity = "0.5";
+    durationRow.appendChild(durationLabel);
+    function updateDuration() {
+      const secs = currentBars * 4 * 60 / currentBpm;
+      const m = Math.floor(secs / 60);
+      const s = Math.round(secs % 60);
+      durationLabel.textContent = `\u2248 ${m}:${String(s).padStart(2, "0")}`;
+    }
+    updateDuration();
     tempoSection.appendChild(barsLabel);
     tempoSection.appendChild(barsPresetRow);
     tempoSection.appendChild(barsRow);
+    tempoSection.appendChild(durationRow);
+    const rowsLabel = document.createElement("div");
+    rowsLabel.className = "gt-field-row";
+    rowsLabel.innerHTML = '<span class="gt-field-label">Rows</span>';
+    rowsLabel.style.marginBottom = "0";
+    const rowsHint = document.createElement("span");
+    rowsHint.className = "gt-dur-hint";
+    rowsHint.textContent = "Stop to change";
+    rowsHint.style.display = "none";
+    rowsLabel.appendChild(rowsHint);
+    const rowsPresetRow = document.createElement("div");
+    rowsPresetRow.className = "gt-preset-row";
+    const ROWS_PRESETS = [
+      { label: "8", val: 8 },
+      { label: "16", val: 16 },
+      { label: "24", val: 24 },
+      { label: "32", val: 32 },
+      { label: "48", val: 48 }
+    ];
+    const rowsPresetBtns = [];
+    for (const p of ROWS_PRESETS) {
+      const btn = document.createElement("button");
+      btn.className = "gt-preset-btn";
+      btn.textContent = p.label;
+      if (p.val === currentRows) btn.classList.add("active");
+      btn.addEventListener("click", () => {
+        setRowsVal(p.val);
+        rowsPresetBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+      rowsPresetRow.appendChild(btn);
+      rowsPresetBtns.push(btn);
+    }
+    const rowsRow = document.createElement("div");
+    rowsRow.className = "gt-dur-row";
+    const rowsMinusBtn = document.createElement("button");
+    rowsMinusBtn.className = "gt-dur-btn";
+    rowsMinusBtn.textContent = "\u2212";
+    const rowsSlider = document.createElement("input");
+    rowsSlider.type = "range";
+    rowsSlider.className = "gt-slider-input";
+    rowsSlider.min = "4";
+    rowsSlider.max = "64";
+    rowsSlider.step = "1";
+    rowsSlider.value = String(currentRows);
+    rowsSlider.style.flex = "1";
+    const rowsDisplay = document.createElement("input");
+    rowsDisplay.className = "gt-dur-display";
+    rowsDisplay.type = "text";
+    rowsDisplay.value = String(currentRows);
+    const rowsPlusBtn = document.createElement("button");
+    rowsPlusBtn.className = "gt-dur-btn";
+    rowsPlusBtn.textContent = "+";
+    function setRowsVal(v) {
+      v = Math.max(4, Math.min(64, v));
+      currentRows = v;
+      rowsSlider.value = String(v);
+      rowsDisplay.value = String(v);
+      ctrl.onRowsChange?.(v);
+    }
+    rowsSlider.addEventListener("input", () => {
+      const v = parseInt(rowsSlider.value, 10);
+      currentRows = v;
+      rowsDisplay.value = String(v);
+      rowsPresetBtns.forEach((b) => b.classList.remove("active"));
+      ctrl.onRowsChange?.(v);
+    });
+    rowsDisplay.addEventListener("change", () => {
+      const v = parseInt(rowsDisplay.value, 10);
+      if (Number.isFinite(v)) setRowsVal(v);
+      else rowsDisplay.value = String(currentRows);
+    });
+    const rowsHold = makeHold((d) => setRowsVal(currentRows + d));
+    rowsMinusBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      rowsHold.start(-1);
+    });
+    rowsMinusBtn.addEventListener("pointerup", () => rowsHold.stop());
+    rowsMinusBtn.addEventListener("pointerleave", () => rowsHold.stop());
+    rowsPlusBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      rowsHold.start(1);
+    });
+    rowsPlusBtn.addEventListener("pointerup", () => rowsHold.stop());
+    rowsPlusBtn.addEventListener("pointerleave", () => rowsHold.stop());
+    rowsRow.appendChild(rowsMinusBtn);
+    rowsRow.appendChild(rowsSlider);
+    rowsRow.appendChild(rowsDisplay);
+    rowsRow.appendChild(rowsPlusBtn);
+    tempoSection.appendChild(rowsLabel);
+    tempoSection.appendChild(rowsPresetRow);
+    tempoSection.appendChild(rowsRow);
     const soundRow = document.createElement("div");
     soundRow.className = "gt-field-row";
     soundRow.innerHTML = '<span class="gt-field-label">Sound</span>';
@@ -1660,6 +1792,7 @@
       onStop: null,
       onBpmChange: null,
       onBarsChange: null,
+      onRowsChange: null,
       onSoundChange: null,
       onThemeChange: null,
       onModeChange: null,
@@ -1690,11 +1823,18 @@
         currentBpm = bpm;
         bpmSlider.value = String(bpm);
         bpmDisplay.value = String(bpm);
+        updateDuration();
       },
       setBars(bars) {
         currentBars = bars;
         barsSlider.value = String(Math.min(128, bars));
         barsDisplay.value = String(bars);
+        updateDuration();
+      },
+      setRows(rows) {
+        currentRows = rows;
+        rowsSlider.value = String(Math.min(64, rows));
+        rowsDisplay.value = String(rows);
       },
       setConfigEnabled(enabled) {
         barsSlider.disabled = !enabled;
@@ -1703,6 +1843,12 @@
         barsPlusBtn.disabled = !enabled;
         for (const btn of barsPresetBtns) btn.disabled = !enabled;
         barsHint.style.display = enabled ? "none" : "";
+        rowsSlider.disabled = !enabled;
+        rowsDisplay.disabled = !enabled;
+        rowsMinusBtn.disabled = !enabled;
+        rowsPlusBtn.disabled = !enabled;
+        for (const btn of rowsPresetBtns) btn.disabled = !enabled;
+        rowsHint.style.display = enabled ? "none" : "";
       },
       closeDrawer
     };
@@ -1756,6 +1902,7 @@
   var consoleCtrl = createConsole(
     params.bpm,
     params.bars,
+    params.rows,
     params.theme,
     params.sound,
     params.mode
@@ -1785,6 +1932,14 @@
   };
   consoleCtrl.onBarsChange = (bars) => {
     params.bars = bars;
+    writeParams(params);
+    if (appState === "idle") {
+      rebuildSim();
+      drawIdleFrame();
+    }
+  };
+  consoleCtrl.onRowsChange = (rows) => {
+    params.rows = rows;
     writeParams(params);
     if (appState === "idle") {
       rebuildSim();
@@ -1887,8 +2042,8 @@
   async function startFresh() {
     await audio.ensureContext();
     rebuildSim();
-    lastBeatIndex = -1;
-    const totalMs = totalBeats() * (6e4 / params.bpm);
+    lastBeatIndex = 0;
+    const totalMs = Math.max(0, totalBeats() - 1) * (6e4 / params.bpm);
     paused = false;
     appState = "running";
     consoleCtrl.setPaused(false);
@@ -1897,6 +2052,7 @@
       audio.playPegHit(row, col, numRows);
     };
     timerBridge.start(totalMs);
+    audio.playBeat(true);
     lastTime = null;
     rafId = requestAnimationFrame(frame);
   }

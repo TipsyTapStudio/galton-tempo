@@ -141,7 +141,7 @@ export class Simulation {
     this.numRows = cfg.numRows;
     this.totalParticles = cfg.totalBeats;
     this.emitIntervalMs = 60000 / cfg.bpm;
-    this.totalTimeMs = cfg.totalBeats * this.emitIntervalMs;
+    this.totalTimeMs = Math.max(0, (cfg.totalBeats - 1)) * this.emitIntervalMs;
     this.rng = cfg.rng;
     this.binCounts = new Array(cfg.numRows + 1).fill(0);
   }
@@ -158,7 +158,7 @@ export class Simulation {
     if (!this.allEmitted) {
       const expectedEmitted = Math.min(
         this.totalParticles,
-        Math.floor(this.elapsedMs / this.emitIntervalMs),
+        1 + Math.floor(this.elapsedMs / this.emitIntervalMs),
       );
       const toEmit = expectedEmitted - this.emittedCount;
       for (let i = 0; i < toEmit; i++) {
@@ -273,7 +273,7 @@ export class Simulation {
 
   /** Get current beat index (0-based). */
   getCurrentBeat(): number {
-    return Math.min(this.totalParticles, Math.floor(this.elapsedMs / this.emitIntervalMs));
+    return Math.min(this.totalParticles, 1 + Math.floor(this.elapsedMs / this.emitIntervalMs));
   }
 
   /** Update BPM (emission rate) while preserving beat position. Returns new totalTimeMs. */
@@ -281,7 +281,7 @@ export class Simulation {
     const currentBeat = this.getCurrentBeat();
     this.emitIntervalMs = 60000 / newBpm;
     this.elapsedMs = currentBeat * this.emitIntervalMs;
-    this.totalTimeMs = this.totalParticles * this.emitIntervalMs;
+    this.totalTimeMs = Math.max(0, (this.totalParticles - 1)) * this.emitIntervalMs;
     return this.totalTimeMs;
   }
 
@@ -293,7 +293,7 @@ export class Simulation {
   instantSnap(geom: BoardGeom): Particle[] {
     const expectedEmitted = Math.min(
       this.totalParticles,
-      Math.floor(this.elapsedMs / this.emitIntervalMs),
+      1 + Math.floor(this.elapsedMs / this.emitIntervalMs),
     );
     const toEmit = expectedEmitted - this.emittedCount;
     if (toEmit <= 0) return [];

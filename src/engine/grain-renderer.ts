@@ -252,7 +252,7 @@ export class GrainRenderer {
     // Glow pass: concentric pulse wave from center outward
     if (beatPhase > 0 && pegAlphaOverride === undefined) {
       const cx = L.centerX;
-      const cy = (L.boardTop + L.boardBottom) / 2;
+      const cy = L.boardTop + (L.boardBottom - L.boardTop) * (2 / 3);
       let maxDist = 0;
       for (let row = 0; row < L.numRows; row++) {
         for (let j = 0; j <= row; j++) {

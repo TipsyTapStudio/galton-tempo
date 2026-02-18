@@ -100,8 +100,8 @@ export class Renderer {
     }
 
     // BPM display (smaller, above hopper)
-    const digitH = Math.min(L.width * 0.14, L.height * 0.16);
-    const bpmY = L.hopperTop - digitH * 0.8;
+    const digitH = Math.min(L.width * 0.08, L.height * 0.10);
+    const bpmY = Math.max(digitH * 0.6, L.hopperTop - digitH * 0.8);
     drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
 
     // "BPM" label below digits

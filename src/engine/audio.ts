@@ -102,21 +102,44 @@ export class AudioEngine {
   private playKick(time: number, accent: boolean): void {
     const ctx = this.ctx!;
 
-    // Sine with pitch envelope: 150Hz → 30Hz
+    // Body: triangle wave (harmonics richer than sine, audible on laptop speakers)
     const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(accent ? 160 : 120, time);
-    osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(accent ? 220 : 180, time);
+    osc.frequency.exponentialRampToValueAtTime(50, time + 0.10);
 
     const gain = ctx.createGain();
-    const vol = accent ? 0.6 : 0.4;
+    const vol = accent ? 0.7 : 0.5;
     gain.gain.setValueAtTime(vol, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.20);
 
     osc.connect(gain);
     gain.connect(this.masterGain!);
-
     osc.start(time);
-    osc.stop(time + 0.3);
+    osc.stop(time + 0.25);
+
+    // Attack transient: short noise burst for click presence
+    const bufLen = Math.ceil(ctx.sampleRate * 0.015);
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(accent ? 0.4 : 0.25, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.015);
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 800;
+    bp.Q.value = 1.5;
+
+    noise.connect(bp);
+    bp.connect(noiseGain);
+    noiseGain.connect(this.masterGain!);
+    noise.start(time);
+    noise.stop(time + 0.02);
   }
 }

@@ -16,6 +16,7 @@ export interface ConsoleController {
   onStop: (() => void) | null;
   onBpmChange: ((bpm: number) => void) | null;
   onBarsChange: ((bars: number) => void) | null;
+  onRowsChange: ((rows: number) => void) | null;
   onSoundChange: ((sound: SoundType) => void) | null;
   onThemeChange: ((name: string) => void) | null;
   onModeChange: ((mode: string) => void) | null;
@@ -26,6 +27,7 @@ export interface ConsoleController {
   setAccentColor(rgb: [number, number, number]): void;
   setBpm(bpm: number): void;
   setBars(bars: number): void;
+  setRows(rows: number): void;
   setConfigEnabled(enabled: boolean): void;
   closeDrawer(): void;
 }
@@ -187,6 +189,7 @@ function makeHold(setter: (d: number) => void) {
 export function createConsole(
   initialBpm: number,
   initialBars: number,
+  initialRows: number,
   initialTheme: string,
   initialSound: SoundType,
   initialMode: string,
@@ -195,6 +198,7 @@ export function createConsole(
 
   let currentBpm = initialBpm;
   let currentBars = initialBars;
+  let currentRows = initialRows;
 
   // Credits
   const creditsEl = document.createElement('div');
@@ -306,6 +310,7 @@ export function createConsole(
     currentBpm = v;
     bpmSlider.value = String(v);
     bpmDisplay.value = String(v);
+    updateDuration();
     ctrl.onBpmChange?.(v);
   }
 
@@ -314,6 +319,7 @@ export function createConsole(
     currentBpm = v;
     bpmDisplay.value = String(v);
     bpmPresetBtns.forEach(b => b.classList.remove('active'));
+    updateDuration();
     ctrl.onBpmChange?.(v);
   });
   bpmDisplay.addEventListener('change', () => {
@@ -400,6 +406,7 @@ export function createConsole(
     currentBars = v;
     barsSlider.value = String(Math.min(128, v));
     barsDisplay.value = String(v);
+    updateDuration();
     ctrl.onBarsChange?.(v);
   }
 
@@ -408,6 +415,7 @@ export function createConsole(
     currentBars = v;
     barsDisplay.value = String(v);
     barsPresetBtns.forEach(b => b.classList.remove('active'));
+    updateDuration();
     ctrl.onBarsChange?.(v);
   });
   barsDisplay.addEventListener('change', () => {
@@ -429,9 +437,122 @@ export function createConsole(
   barsRow.appendChild(barsDisplay);
   barsRow.appendChild(barsPlusBtn);
 
+  // Duration info row (read-only)
+  const durationRow = document.createElement('div');
+  durationRow.className = 'gt-field-row';
+  durationRow.style.marginTop = '-2px';
+  const durationLabel = document.createElement('span');
+  durationLabel.className = 'gt-field-label';
+  durationLabel.style.fontSize = '10px';
+  durationLabel.style.opacity = '0.5';
+  durationRow.appendChild(durationLabel);
+
+  function updateDuration(): void {
+    const secs = currentBars * 4 * 60 / currentBpm;
+    const m = Math.floor(secs / 60);
+    const s = Math.round(secs % 60);
+    durationLabel.textContent = `\u2248 ${m}:${String(s).padStart(2, '0')}`;
+  }
+  updateDuration();
+
   tempoSection.appendChild(barsLabel);
   tempoSection.appendChild(barsPresetRow);
   tempoSection.appendChild(barsRow);
+  tempoSection.appendChild(durationRow);
+
+  // Rows
+  const rowsLabel = document.createElement('div');
+  rowsLabel.className = 'gt-field-row';
+  rowsLabel.innerHTML = '<span class="gt-field-label">Rows</span>';
+  rowsLabel.style.marginBottom = '0';
+  const rowsHint = document.createElement('span');
+  rowsHint.className = 'gt-dur-hint';
+  rowsHint.textContent = 'Stop to change';
+  rowsHint.style.display = 'none';
+  rowsLabel.appendChild(rowsHint);
+
+  const rowsPresetRow = document.createElement('div');
+  rowsPresetRow.className = 'gt-preset-row';
+  const ROWS_PRESETS = [
+    { label: '8', val: 8 },
+    { label: '16', val: 16 },
+    { label: '24', val: 24 },
+    { label: '32', val: 32 },
+    { label: '48', val: 48 },
+  ];
+  const rowsPresetBtns: HTMLButtonElement[] = [];
+  for (const p of ROWS_PRESETS) {
+    const btn = document.createElement('button');
+    btn.className = 'gt-preset-btn';
+    btn.textContent = p.label;
+    if (p.val === currentRows) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      setRowsVal(p.val);
+      rowsPresetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    rowsPresetRow.appendChild(btn);
+    rowsPresetBtns.push(btn);
+  }
+
+  const rowsRow = document.createElement('div');
+  rowsRow.className = 'gt-dur-row';
+  const rowsMinusBtn = document.createElement('button');
+  rowsMinusBtn.className = 'gt-dur-btn';
+  rowsMinusBtn.textContent = '\u2212';
+  const rowsSlider = document.createElement('input');
+  rowsSlider.type = 'range';
+  rowsSlider.className = 'gt-slider-input';
+  rowsSlider.min = '4';
+  rowsSlider.max = '64';
+  rowsSlider.step = '1';
+  rowsSlider.value = String(currentRows);
+  rowsSlider.style.flex = '1';
+  const rowsDisplay = document.createElement('input');
+  rowsDisplay.className = 'gt-dur-display';
+  rowsDisplay.type = 'text';
+  rowsDisplay.value = String(currentRows);
+  const rowsPlusBtn = document.createElement('button');
+  rowsPlusBtn.className = 'gt-dur-btn';
+  rowsPlusBtn.textContent = '+';
+
+  function setRowsVal(v: number): void {
+    v = Math.max(4, Math.min(64, v));
+    currentRows = v;
+    rowsSlider.value = String(v);
+    rowsDisplay.value = String(v);
+    ctrl.onRowsChange?.(v);
+  }
+
+  rowsSlider.addEventListener('input', () => {
+    const v = parseInt(rowsSlider.value, 10);
+    currentRows = v;
+    rowsDisplay.value = String(v);
+    rowsPresetBtns.forEach(b => b.classList.remove('active'));
+    ctrl.onRowsChange?.(v);
+  });
+  rowsDisplay.addEventListener('change', () => {
+    const v = parseInt(rowsDisplay.value, 10);
+    if (Number.isFinite(v)) setRowsVal(v);
+    else rowsDisplay.value = String(currentRows);
+  });
+
+  const rowsHold = makeHold((d) => setRowsVal(currentRows + d));
+  rowsMinusBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); rowsHold.start(-1); });
+  rowsMinusBtn.addEventListener('pointerup', () => rowsHold.stop());
+  rowsMinusBtn.addEventListener('pointerleave', () => rowsHold.stop());
+  rowsPlusBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); rowsHold.start(1); });
+  rowsPlusBtn.addEventListener('pointerup', () => rowsHold.stop());
+  rowsPlusBtn.addEventListener('pointerleave', () => rowsHold.stop());
+
+  rowsRow.appendChild(rowsMinusBtn);
+  rowsRow.appendChild(rowsSlider);
+  rowsRow.appendChild(rowsDisplay);
+  rowsRow.appendChild(rowsPlusBtn);
+
+  tempoSection.appendChild(rowsLabel);
+  tempoSection.appendChild(rowsPresetRow);
+  tempoSection.appendChild(rowsRow);
 
   // Sound type
   const soundRow = document.createElement('div');
@@ -558,7 +679,7 @@ export function createConsole(
     show() { controls.classList.remove('hidden'); },
     hide() { controls.classList.add('hidden'); if (drawerOpen) closeDrawer(); },
     onStart: null, onPause: null, onStop: null,
-    onBpmChange: null, onBarsChange: null, onSoundChange: null,
+    onBpmChange: null, onBarsChange: null, onRowsChange: null, onSoundChange: null,
     onThemeChange: null, onModeChange: null, onShareURL: null, onResetDefaults: null,
     setPaused(p: boolean) {
       startBtn.style.display = p ? '' : 'none';
@@ -585,21 +706,35 @@ export function createConsole(
       currentBpm = bpm;
       bpmSlider.value = String(bpm);
       bpmDisplay.value = String(bpm);
+      updateDuration();
     },
     setBars(bars: number) {
       currentBars = bars;
       barsSlider.value = String(Math.min(128, bars));
       barsDisplay.value = String(bars);
+      updateDuration();
+    },
+    setRows(rows: number) {
+      currentRows = rows;
+      rowsSlider.value = String(Math.min(64, rows));
+      rowsDisplay.value = String(rows);
     },
     setConfigEnabled(enabled: boolean) {
       // BPM: always enabled (live tempo change)
-      // Bars only
+      // Bars + Rows: disabled during run
       barsSlider.disabled = !enabled;
       barsDisplay.disabled = !enabled;
       barsMinusBtn.disabled = !enabled;
       barsPlusBtn.disabled = !enabled;
       for (const btn of barsPresetBtns) btn.disabled = !enabled;
       barsHint.style.display = enabled ? 'none' : '';
+
+      rowsSlider.disabled = !enabled;
+      rowsDisplay.disabled = !enabled;
+      rowsMinusBtn.disabled = !enabled;
+      rowsPlusBtn.disabled = !enabled;
+      for (const btn of rowsPresetBtns) btn.disabled = !enabled;
+      rowsHint.style.display = enabled ? 'none' : '';
     },
     closeDrawer,
   };
