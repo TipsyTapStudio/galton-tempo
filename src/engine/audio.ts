@@ -51,7 +51,7 @@ export class AudioEngine {
     const freq = 200 + rowFrac * 1800;
 
     // Slight pan based on column position
-    const colFrac = numRows > 0 ? (col / row - 0.5) * 2 : 0;
+    const colFrac = row > 0 ? (col / row - 0.5) * 2 : 0;
 
     const osc = this.ctx.createOscillator();
     osc.type = 'triangle';

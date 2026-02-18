@@ -1101,7 +1101,7 @@
       const now = this.ctx.currentTime;
       const rowFrac = row / Math.max(1, numRows - 1);
       const freq = 200 + rowFrac * 1800;
-      const colFrac = numRows > 0 ? (col / row - 0.5) * 2 : 0;
+      const colFrac = row > 0 ? (col / row - 0.5) * 2 : 0;
       const osc = this.ctx.createOscillator();
       osc.type = "triangle";
       osc.frequency.value = freq;
@@ -2119,6 +2119,7 @@
       rafId = requestAnimationFrame(frame);
       return;
     }
+    rafId = requestAnimationFrame(frame);
     const geom = renderer.getGeom();
     const settled = sim.update(dtMs, geom, (x) => renderer.getGroundY(x));
     for (const p of settled) {
@@ -2140,11 +2141,10 @@
     );
     const trulyDone = sim.allSettled && sim.emittedCount >= sim.totalParticles;
     if (trulyDone) {
+      cancelAnimationFrame(rafId);
       appState = "idle";
       consoleCtrl.setPaused(true);
       consoleCtrl.setConfigEnabled(true);
-    } else {
-      rafId = requestAnimationFrame(frame);
     }
   }
   appState = "idle";

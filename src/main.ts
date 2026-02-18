@@ -383,6 +383,9 @@ function frame(now: number): void {
   }
 
   // ── Running state ──
+  // Schedule next frame FIRST — if processing throws, loop survives
+  rafId = requestAnimationFrame(frame);
+
   const geom = renderer.getGeom();
   const settled = sim.update(dtMs, geom, (x) => renderer.getGroundY(x));
 
@@ -407,16 +410,15 @@ function frame(now: number): void {
     beatPhase,
   );
 
-  // Safety: only stop when ALL particles have been both emitted AND settled
+  // Stop only when ALL particles have been both emitted AND settled
   const trulyDone = sim.allSettled
     && sim.emittedCount >= sim.totalParticles;
 
   if (trulyDone) {
+    cancelAnimationFrame(rafId);
     appState = 'idle';
     consoleCtrl.setPaused(true);
     consoleCtrl.setConfigEnabled(true);
-  } else {
-    rafId = requestAnimationFrame(frame);
   }
 }
 
