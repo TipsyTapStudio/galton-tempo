@@ -16,6 +16,7 @@ import {
 const PI2 = Math.PI * 2;
 
 const GRAIN_ALPHA = 0.85;
+const GRAIN_DIM_ALPHA = 0.45;   // non-accent grains (sub-beats)
 const GRAIN_GLOW_ALPHA = 0.06;
 const GRAIN_GLOW_SCALE = 3.0;
 const STATIC_GRAIN_ALPHA = 1.0;
@@ -32,6 +33,7 @@ export class GrainRenderer {
   private hopperFadeAlpha = 1;
 
   private grainCoreFill = '';
+  private grainCoreDimFill = '';
   private grainGlowFill = '';
   private staticGrainFill = '';
 
@@ -52,6 +54,7 @@ export class GrainRenderer {
   updateGrainColors(theme: ClockTheme): void {
     const [r, g, b] = theme.grainRGB;
     this.grainCoreFill = `rgba(${r},${g},${b},${GRAIN_ALPHA})`;
+    this.grainCoreDimFill = `rgba(${r},${g},${b},${GRAIN_DIM_ALPHA})`;
     this.grainGlowFill = `rgba(${r},${g},${b},${GRAIN_GLOW_ALPHA})`;
     this.staticGrainFill = `rgba(${r},${g},${b},${STATIC_GRAIN_ALPHA})`;
   }
@@ -289,6 +292,7 @@ export class GrainRenderer {
     if (particles.length === 0) return;
     const r = L.grainRadius;
 
+    // Glow pass — all particles
     ctx.fillStyle = this.grainGlowFill;
     ctx.beginPath();
     for (const p of particles) {
@@ -297,9 +301,21 @@ export class GrainRenderer {
     }
     ctx.fill();
 
+    // Core pass — non-accent (dimmer sub-beat grains)
+    ctx.fillStyle = this.grainCoreDimFill;
+    ctx.beginPath();
+    for (const p of particles) {
+      if (p.isAccent) continue;
+      ctx.moveTo(p.x + r, p.y);
+      ctx.arc(p.x, p.y, r, 0, PI2);
+    }
+    ctx.fill();
+
+    // Core pass — accent (bright downbeat grains)
     ctx.fillStyle = this.grainCoreFill;
     ctx.beginPath();
     for (const p of particles) {
+      if (!p.isAccent) continue;
       ctx.moveTo(p.x + r, p.y);
       ctx.arc(p.x, p.y, r, 0, PI2);
     }

@@ -160,7 +160,9 @@
       /** Callback: fired when a particle collides with a peg. */
       this.onPegHit = null;
       this.numRows = cfg.numRows;
-      this.totalParticles = cfg.totalBeats;
+      this.grainsPerBeat = cfg.grainsPerBeat ?? 4;
+      this.totalBeats = cfg.totalBeats;
+      this.totalParticles = cfg.totalBeats * this.grainsPerBeat;
       this.emitIntervalMs = 6e4 / cfg.bpm;
       this.totalTimeMs = Math.max(0, cfg.totalBeats - 1) * this.emitIntervalMs;
       this.rng = cfg.rng;
@@ -170,9 +172,10 @@
       const dt = Math.min(dtMs, 100) / 1e3;
       const settled = [];
       if (!this.allEmitted) {
+        const beatsReached = 1 + Math.floor(this.elapsedMs / this.emitIntervalMs);
         const expectedEmitted = Math.min(
           this.totalParticles,
-          1 + Math.floor(this.elapsedMs / this.emitIntervalMs)
+          this.grainsPerBeat * beatsReached
         );
         const toEmit = expectedEmitted - this.emittedCount;
         for (let i = 0; i < toEmit; i++) {
@@ -263,14 +266,14 @@
     }
     /** Get current beat index (0-based). */
     getCurrentBeat() {
-      return Math.min(this.totalParticles, 1 + Math.floor(this.elapsedMs / this.emitIntervalMs));
+      return Math.min(this.totalBeats, 1 + Math.floor(this.elapsedMs / this.emitIntervalMs));
     }
     /** Update BPM (emission rate) while preserving beat position. Returns new totalTimeMs. */
     updateBpm(newBpm) {
       const currentBeat = this.getCurrentBeat();
       this.emitIntervalMs = 6e4 / newBpm;
       this.elapsedMs = currentBeat * this.emitIntervalMs;
-      this.totalTimeMs = Math.max(0, this.totalParticles - 1) * this.emitIntervalMs;
+      this.totalTimeMs = Math.max(0, this.totalBeats - 1) * this.emitIntervalMs;
       return this.totalTimeMs;
     }
     /** Get current bar (0-based). */
@@ -278,9 +281,10 @@
       return Math.floor(this.getCurrentBeat() / beatsPerBar);
     }
     instantSnap(geom) {
+      const beatsReached = 1 + Math.floor(this.elapsedMs / this.emitIntervalMs);
       const expectedEmitted = Math.min(
         this.totalParticles,
-        1 + Math.floor(this.elapsedMs / this.emitIntervalMs)
+        this.grainsPerBeat * beatsReached
       );
       const toEmit = expectedEmitted - this.emittedCount;
       if (toEmit <= 0) return [];
@@ -314,6 +318,7 @@
         path.push(d);
         bin += d;
       }
+      const isAccent = this.emittedCount % this.grainsPerBeat === 0;
       const beatIndex = this.emittedCount;
       this.emittedCount++;
       return {
@@ -326,7 +331,8 @@
         pegIndex: 0,
         settled: false,
         jitter: this.rng(),
-        beatIndex
+        beatIndex,
+        isAccent
       };
     }
   };
@@ -477,7 +483,7 @@
 
   // src/engine/layout.ts
   var SQRT3_2 = Math.sqrt(3) / 2;
-  function computeLayout(w, h, dpr, numRows, totalParticles) {
+  function computeLayout(w, h, dpr, numRows, totalParticles2) {
     const centerX = w / 2;
     const marginX = w * 0.15;
     const contentW = w - marginX * 2;
@@ -507,7 +513,7 @@
     const accHeight_available = safeH - aboveAccH;
     const accHeight = Math.max(pegSpacing * 2, Math.min(accHeight_available, boardH / 2));
     const maxProb = maxBinProbability(numRows);
-    const maxBinCount = maxProb * totalParticles * 1.15;
+    const maxBinCount = maxProb * totalParticles2 * 1.15;
     const accTop = accBottom - accHeight;
     const boardBottom = accTop - gridToAcc;
     const boardTopY = boardBottom - boardH;
@@ -516,7 +522,7 @@
     const hopperJunction = hopperTop;
     const emitY = hopperBottom + hopperToGrid * 0.55;
     const inlineTimerY = Math.max(topMargin + inlineTimerH * 0.5, hopperTop - inlineTimerH * 0.6);
-    const stackScale = accHeight * 0.85 / (maxProb * totalParticles);
+    const stackScale = accHeight * 0.85 / (maxProb * totalParticles2);
     const d_natural = grainRadius * 1.6;
     const rowH_natural = d_natural * SQRT3_2;
     const peakCeiling = accHeight * 0.95;
@@ -631,6 +637,7 @@
   // src/engine/grain-renderer.ts
   var PI2 = Math.PI * 2;
   var GRAIN_ALPHA = 0.85;
+  var GRAIN_DIM_ALPHA = 0.45;
   var GRAIN_GLOW_ALPHA = 0.06;
   var GRAIN_GLOW_SCALE = 3;
   var STATIC_GRAIN_ALPHA = 1;
@@ -640,6 +647,7 @@
       this.hopperGrainTopY = 0;
       this.hopperFadeAlpha = 1;
       this.grainCoreFill = "";
+      this.grainCoreDimFill = "";
       this.grainGlowFill = "";
       this.staticGrainFill = "";
       this.staticCanvas = document.createElement("canvas");
@@ -657,10 +665,11 @@
     updateGrainColors(theme) {
       const [r, g, b] = theme.grainRGB;
       this.grainCoreFill = `rgba(${r},${g},${b},${GRAIN_ALPHA})`;
+      this.grainCoreDimFill = `rgba(${r},${g},${b},${GRAIN_DIM_ALPHA})`;
       this.grainGlowFill = `rgba(${r},${g},${b},${GRAIN_GLOW_ALPHA})`;
       this.staticGrainFill = `rgba(${r},${g},${b},${STATIC_GRAIN_ALPHA})`;
     }
-    applyLayout(L, totalParticles) {
+    applyLayout(L, totalParticles2) {
       const w = L.width;
       const h = L.height;
       const dpr = L.dpr;
@@ -674,7 +683,7 @@
       this.dCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.binCounts = new Array(L.numRows + 1).fill(0);
       this.sCtx.clearRect(0, 0, w, h);
-      this.hopperGrainCache = computeHopperGrains(L, totalParticles, L.miniGrainR);
+      this.hopperGrainCache = computeHopperGrains(L, totalParticles2, L.miniGrainR);
       let minY = L.hopperBottom;
       for (const g of this.hopperGrainCache) {
         if (g.y < minY) minY = g.y;
@@ -867,9 +876,18 @@
         ctx.arc(p.x, p.y, r * GRAIN_GLOW_SCALE, 0, PI2);
       }
       ctx.fill();
+      ctx.fillStyle = this.grainCoreDimFill;
+      ctx.beginPath();
+      for (const p of particles) {
+        if (p.isAccent) continue;
+        ctx.moveTo(p.x + r, p.y);
+        ctx.arc(p.x, p.y, r, 0, PI2);
+      }
+      ctx.fill();
       ctx.fillStyle = this.grainCoreFill;
       ctx.beginPath();
       for (const p of particles) {
+        if (!p.isAccent) continue;
         ctx.moveTo(p.x + r, p.y);
         ctx.arc(p.x, p.y, r, 0, PI2);
       }
@@ -888,7 +906,7 @@
     resetHopperFade() {
       this.hopperFadeAlpha = 1;
     }
-    fillStacks(L, numRows, totalParticles, theme) {
+    fillStacks(L, numRows, totalParticles2, theme) {
       const n = numRows;
       const numBins = n + 1;
       this.binCounts = new Array(numBins).fill(0);
@@ -899,11 +917,11 @@
       let placed = 0;
       for (let k = 0; k < numBins; k++) {
         probs[k] = Math.exp(lnFact[n] - lnFact[k] - lnFact[n - k] - n * Math.LN2);
-        this.binCounts[k] = Math.round(probs[k] * totalParticles);
+        this.binCounts[k] = Math.round(probs[k] * totalParticles2);
         placed += this.binCounts[k];
       }
       const centerBin = Math.floor(numBins / 2);
-      this.binCounts[centerBin] += totalParticles - placed;
+      this.binCounts[centerBin] += totalParticles2 - placed;
       this.rebakeStatic(L, theme);
     }
     drawPegsTransformed(ctx, L, theme, beatPhase, offsetX, flipY) {
@@ -1032,9 +1050,9 @@
 
   // src/engine/renderer.ts
   var Renderer = class {
-    constructor(container2, numRows, totalParticles) {
+    constructor(container2, numRows, totalParticles2) {
       this.currentTheme = CLOCK_THEMES[0];
-      this.totalParticles = totalParticles;
+      this.totalParticles = totalParticles2;
       this.gr = new GrainRenderer(container2);
       this.gr.updateGrainColors(this.currentTheme);
       this.resize(numRows);
@@ -1055,8 +1073,8 @@
     getTheme() {
       return this.currentTheme;
     }
-    resize(numRows, totalParticles) {
-      if (totalParticles !== void 0) this.totalParticles = totalParticles;
+    resize(numRows, totalParticles2) {
+      if (totalParticles2 !== void 0) this.totalParticles = totalParticles2;
       const dpr = window.devicePixelRatio || 1;
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -1086,7 +1104,7 @@
     bakeParticle(p) {
       this.gr.bakeParticle(this.layout, p);
     }
-    drawFrame(particles, bpm, totalParticles, emittedCount, currentBar, totalBars, beatInBar, beatPhase = 0, cloneStates = []) {
+    drawFrame(particles, bpm, totalParticles2, emittedCount, currentBar, totalBars, beatInBar, beatPhase = 0, cloneStates = []) {
       const L = this.layout;
       const ctx = this.gr.dCtx;
       ctx.clearRect(0, 0, L.width, L.height);
@@ -1096,8 +1114,8 @@
         this.gr.drawParticlesTransformed(ctx, L, particles, cs.config.offsetX, cs.config.flipY);
         ctx.globalAlpha = 1;
       }
-      if (totalParticles > 0) {
-        const progress = Math.min(1, emittedCount / totalParticles);
+      if (totalParticles2 > 0) {
+        const progress = Math.min(1, emittedCount / totalParticles2);
         const [r, g, b] = this.currentTheme.segmentRGB;
         ctx.fillStyle = `rgba(${r},${g},${b},0.60)`;
         ctx.fillRect(0, 0, L.width * progress, 2);
@@ -1118,15 +1136,15 @@
         ctx.arc(dx, dotY, isActive ? dotR * 1.5 : dotR, 0, Math.PI * 2);
         ctx.fill();
       }
-      this.gr.drawHopper(ctx, L, emittedCount, totalParticles);
+      this.gr.drawHopper(ctx, L, emittedCount, totalParticles2);
       this.gr.drawPegs(ctx, L, this.currentTheme, void 0, beatPhase);
       this.gr.drawParticles(ctx, L, particles);
     }
     clearStatic() {
       this.gr.clearStatic(this.layout);
     }
-    fillStacks(numRows, totalParticles) {
-      this.gr.fillStacks(this.layout, numRows, totalParticles, this.currentTheme);
+    fillStacks(numRows, totalParticles2) {
+      this.gr.fillStacks(this.layout, numRows, totalParticles2, this.currentTheme);
     }
     drawDebugHUD(stats) {
       drawHUD(this.gr.dCtx, stats, this.layout.height);
@@ -1999,18 +2017,23 @@
   var perf = DEBUG ? new PerfTracker() : null;
   writeParams(params);
   var BEATS_PER_BAR = 4;
+  var GRAINS_PER_BEAT = 4;
   var rng = createPRNG(params.s);
   function totalBeats() {
     return params.bars * BEATS_PER_BAR;
+  }
+  function totalParticles() {
+    return totalBeats() * GRAINS_PER_BEAT;
   }
   var sim = new Simulation({
     numRows: params.rows,
     totalBeats: totalBeats(),
     bpm: params.bpm,
-    rng
+    rng,
+    grainsPerBeat: GRAINS_PER_BEAT
   });
   var container = document.getElementById("app");
-  var renderer = new Renderer(container, params.rows, totalBeats());
+  var renderer = new Renderer(container, params.rows, totalParticles());
   var audio = new AudioEngine();
   audio.soundType = params.sound;
   renderer.setThemeByName(params.theme);
@@ -2135,16 +2158,17 @@
       numRows: params.rows,
       totalBeats: totalBeats(),
       bpm: params.bpm,
-      rng
+      rng,
+      grainsPerBeat: GRAINS_PER_BEAT
     });
     renderer.clearStatic();
-    renderer.resize(params.rows, totalBeats());
+    renderer.resize(params.rows, totalParticles());
     cloneConfigs = computeBandClones(renderer.layout);
   }
   function drawIdleFrame() {
-    const tb = totalBeats();
+    const tp = totalParticles();
     const cs = updateCloneStates(cloneConfigs, 0);
-    renderer.drawFrame([], params.bpm, tb, 0, 0, params.bars, 0, 0, cs);
+    renderer.drawFrame([], params.bpm, tp, 0, 0, params.bars, 0, 0, cs);
   }
   function drawPausedFrame() {
     const currentBeat = sim.getCurrentBeat();
@@ -2206,7 +2230,7 @@
     consoleCtrl.setPaused(true);
     stoppingEmitted = sim.emittedCount;
     stoppingTotal = sim.totalParticles;
-    renderer.fillStacks(params.rows, totalBeats());
+    renderer.fillStacks(params.rows, totalParticles());
     renderer.beginHopperFade();
     hopperFadeAlpha = 1;
     appState = "stopping";
@@ -2215,7 +2239,7 @@
     rafId = requestAnimationFrame(frame);
   }
   window.addEventListener("resize", () => {
-    renderer.resize(params.rows, totalBeats());
+    renderer.resize(params.rows, totalParticles());
     cloneConfigs = computeBandClones(renderer.layout);
     if (appState === "idle") {
       drawIdleFrame();

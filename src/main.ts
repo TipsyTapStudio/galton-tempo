@@ -29,6 +29,7 @@ const perf = DEBUG ? new PerfTracker() : null;
 writeParams(params);
 
 const BEATS_PER_BAR = 4;
+const GRAINS_PER_BEAT = 4;  // TR-REC style: 16 grains per bar
 
 let rng = createPRNG(params.s);
 
@@ -36,17 +37,22 @@ function totalBeats(): number {
   return params.bars * BEATS_PER_BAR;
 }
 
+function totalParticles(): number {
+  return totalBeats() * GRAINS_PER_BEAT;
+}
+
 let sim = new Simulation({
   numRows: params.rows,
   totalBeats: totalBeats(),
   bpm: params.bpm,
   rng,
+  grainsPerBeat: GRAINS_PER_BEAT,
 });
 
 // ── DOM ──
 
 const container = document.getElementById('app')!;
-const renderer = new Renderer(container, params.rows, totalBeats());
+const renderer = new Renderer(container, params.rows, totalParticles());
 
 // ── Audio ──
 
@@ -226,16 +232,17 @@ function rebuildSim(): void {
     totalBeats: totalBeats(),
     bpm: params.bpm,
     rng,
+    grainsPerBeat: GRAINS_PER_BEAT,
   });
   renderer.clearStatic();
-  renderer.resize(params.rows, totalBeats());
+  renderer.resize(params.rows, totalParticles());
   cloneConfigs = computeBandClones(renderer.layout);
 }
 
 function drawIdleFrame(): void {
-  const tb = totalBeats();
+  const tp = totalParticles();
   const cs = updateCloneStates(cloneConfigs, 0);
-  renderer.drawFrame([], params.bpm, tb, 0, 0, params.bars, 0, 0, cs);
+  renderer.drawFrame([], params.bpm, tp, 0, 0, params.bars, 0, 0, cs);
 }
 
 function drawPausedFrame(): void {
@@ -317,7 +324,7 @@ function stopToIdle(): void {
   stoppingTotal = sim.totalParticles;
 
   // Fill stacks with binomial distribution
-  renderer.fillStacks(params.rows, totalBeats());
+  renderer.fillStacks(params.rows, totalParticles());
 
   // Begin hopper fade-out
   renderer.beginHopperFade();
@@ -331,7 +338,7 @@ function stopToIdle(): void {
 // ── Resize ──
 
 window.addEventListener('resize', () => {
-  renderer.resize(params.rows, totalBeats());
+  renderer.resize(params.rows, totalParticles());
   cloneConfigs = computeBandClones(renderer.layout);
   if (appState === 'idle') {
     drawIdleFrame();

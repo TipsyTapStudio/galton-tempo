@@ -21,6 +21,7 @@ export interface Particle {
   settled: boolean;
   jitter: number;
   beatIndex: number;    // which beat this particle was emitted on
+  isAccent: boolean;    // true for the first grain of each beat
 }
 
 export interface BoardGeom {
@@ -38,6 +39,7 @@ export interface SimConfig {
   totalBeats: number;   // bars * beatsPerBar
   bpm: number;
   rng: () => number;
+  grainsPerBeat?: number; // default 4 — TR-REC style (16 per bar)
 }
 
 // ── Physics constants ──
@@ -122,6 +124,8 @@ const PEG_COLLISION_FRAC = 0.30;
 export class Simulation {
   readonly numRows: number;
   readonly totalParticles: number;
+  readonly totalBeats: number;
+  readonly grainsPerBeat: number;
   totalTimeMs: number;
 
   binCounts: number[];
@@ -139,7 +143,9 @@ export class Simulation {
 
   constructor(cfg: SimConfig) {
     this.numRows = cfg.numRows;
-    this.totalParticles = cfg.totalBeats;
+    this.grainsPerBeat = cfg.grainsPerBeat ?? 4;
+    this.totalBeats = cfg.totalBeats;
+    this.totalParticles = cfg.totalBeats * this.grainsPerBeat;
     this.emitIntervalMs = 60000 / cfg.bpm;
     this.totalTimeMs = Math.max(0, (cfg.totalBeats - 1)) * this.emitIntervalMs;
     this.rng = cfg.rng;
@@ -154,11 +160,12 @@ export class Simulation {
     const dt = Math.min(dtMs, 100) / 1000;
     const settled: Particle[] = [];
 
-    // ── Emission (BPM-synced) ──
+    // ── Emission (BPM-synced, burst of grainsPerBeat per beat) ──
     if (!this.allEmitted) {
+      const beatsReached = 1 + Math.floor(this.elapsedMs / this.emitIntervalMs);
       const expectedEmitted = Math.min(
         this.totalParticles,
-        1 + Math.floor(this.elapsedMs / this.emitIntervalMs),
+        this.grainsPerBeat * beatsReached,
       );
       const toEmit = expectedEmitted - this.emittedCount;
       for (let i = 0; i < toEmit; i++) {
@@ -273,7 +280,7 @@ export class Simulation {
 
   /** Get current beat index (0-based). */
   getCurrentBeat(): number {
-    return Math.min(this.totalParticles, 1 + Math.floor(this.elapsedMs / this.emitIntervalMs));
+    return Math.min(this.totalBeats, 1 + Math.floor(this.elapsedMs / this.emitIntervalMs));
   }
 
   /** Update BPM (emission rate) while preserving beat position. Returns new totalTimeMs. */
@@ -281,7 +288,7 @@ export class Simulation {
     const currentBeat = this.getCurrentBeat();
     this.emitIntervalMs = 60000 / newBpm;
     this.elapsedMs = currentBeat * this.emitIntervalMs;
-    this.totalTimeMs = Math.max(0, (this.totalParticles - 1)) * this.emitIntervalMs;
+    this.totalTimeMs = Math.max(0, (this.totalBeats - 1)) * this.emitIntervalMs;
     return this.totalTimeMs;
   }
 
@@ -291,9 +298,10 @@ export class Simulation {
   }
 
   instantSnap(geom: BoardGeom): Particle[] {
+    const beatsReached = 1 + Math.floor(this.elapsedMs / this.emitIntervalMs);
     const expectedEmitted = Math.min(
       this.totalParticles,
-      1 + Math.floor(this.elapsedMs / this.emitIntervalMs),
+      this.grainsPerBeat * beatsReached,
     );
     const toEmit = expectedEmitted - this.emittedCount;
     if (toEmit <= 0) return [];
@@ -331,6 +339,7 @@ export class Simulation {
       path.push(d);
       bin += d;
     }
+    const isAccent = this.emittedCount % this.grainsPerBeat === 0;
     const beatIndex = this.emittedCount;
     this.emittedCount++;
     return {
@@ -340,6 +349,7 @@ export class Simulation {
       pegIndex: 0, settled: false,
       jitter: this.rng(),
       beatIndex,
+      isAccent,
     };
   }
 }
