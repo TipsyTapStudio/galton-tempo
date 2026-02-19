@@ -12,6 +12,8 @@ export interface PerfStats {
   beatLatencyMs: number;
   /** Worst beat latency in recent history (ms). */
   beatLatencyPeak: number;
+  /** Worker tick messages received per second. */
+  ticksPerSec: number;
 }
 
 const WINDOW = 60; // rolling window size (frames)
@@ -21,6 +23,7 @@ export class PerfTracker {
   private frameTimes: number[] = [];
   private timestamps: number[] = [];
   private beatLatencies: number[] = [];
+  private tickTimestamps: number[] = [];
 
   /** Call at the very start of frame(). Returns a token for endFrame(). */
   beginFrame(): number {
@@ -46,10 +49,21 @@ export class PerfTracker {
     }
   }
 
+  /** Record a worker tick arrival. */
+  recordTick(): void {
+    const now = performance.now();
+    this.tickTimestamps.push(now);
+    // Keep only last 2 seconds of ticks
+    const cutoff = now - 2000;
+    while (this.tickTimestamps.length > 0 && this.tickTimestamps[0] < cutoff) {
+      this.tickTimestamps.shift();
+    }
+  }
+
   /** Compute current stats snapshot. */
   getStats(cloneCount: number): PerfStats {
     const n = this.timestamps.length;
-    if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount, beatLatencyMs: 0, beatLatencyPeak: 0 };
+    if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount, beatLatencyMs: 0, beatLatencyPeak: 0, ticksPerSec: 0 };
 
     const elapsed = this.timestamps[n - 1] - this.timestamps[0];
     const fps = elapsed > 0 ? (n - 1) / elapsed * 1000 : 0;
@@ -63,7 +77,13 @@ export class PerfTracker {
     let beatPeak = 0;
     for (const b of this.beatLatencies) { if (b > beatPeak) beatPeak = b; }
 
-    return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount, beatLatencyMs, beatLatencyPeak: beatPeak };
+    // Ticks/s: count ticks in the last 1 second
+    const now = performance.now();
+    const oneSecAgo = now - 1000;
+    let tickCount = 0;
+    for (const t of this.tickTimestamps) { if (t >= oneSecAgo) tickCount++; }
+
+    return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount, beatLatencyMs, beatLatencyPeak: beatPeak, ticksPerSec: tickCount };
   }
 }
 
@@ -87,8 +107,8 @@ export function drawHUD(
   ctx.fillText(`FPS ${stats.fps.toFixed(1)}  Frame ${stats.frameTimeMs.toFixed(1)}ms  Peak ${stats.frameTimePeak.toFixed(0)}ms`, x, y);
   y += lineH;
 
-  // Clones line
-  ctx.fillText(`Clones ${stats.cloneCount}`, x, y);
+  // Clones + Ticks line
+  ctx.fillText(`Clones ${stats.cloneCount}  Ticks ${stats.ticksPerSec}/s`, x, y);
   y += lineH;
 
   // Beat latency line

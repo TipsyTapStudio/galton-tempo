@@ -71,6 +71,7 @@ const timerBridge = new TimerBridge();
 let lastBeatIndex = -1;
 
 timerBridge.onTick = (_remainingMs, elapsedMs) => {
+  perf?.recordTick();
   sim.setElapsedMs(elapsedMs);
 
   // Beat detection: fire audio on each new beat
