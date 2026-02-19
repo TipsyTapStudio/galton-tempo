@@ -50,6 +50,8 @@
     sp.set("sound", cfg.sound);
     sp.set("theme", cfg.theme);
     sp.set("mode", cfg.mode);
+    const current = new URLSearchParams(window.location.search);
+    if (current.get("debug") === "1") sp.set("debug", "1");
     const url = `${window.location.pathname}?${sp.toString()}`;
     window.history.replaceState(null, "", url);
   }
@@ -1958,9 +1960,9 @@
 
   // src/main.ts
   var params = readParams();
-  writeParams(params);
   var DEBUG = new URLSearchParams(window.location.search).get("debug") === "1";
   var perf = DEBUG ? new PerfTracker() : null;
+  writeParams(params);
   var BEATS_PER_BAR = 4;
   var rng = createPRNG(params.s);
   function totalBeats() {

@@ -24,10 +24,9 @@ import { PerfTracker } from './engine/perf-hud';
 // ── Bootstrap ──
 
 const params = readParams();
-writeParams(params);
-
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
 const perf = DEBUG ? new PerfTracker() : null;
+writeParams(params);
 
 const BEATS_PER_BAR = 4;
 

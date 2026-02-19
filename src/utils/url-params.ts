@@ -69,6 +69,9 @@ export function writeParams(cfg: AppParams): void {
   sp.set('sound', cfg.sound);
   sp.set('theme', cfg.theme);
   sp.set('mode', cfg.mode);
+  // Preserve debug flag across URL rewrites
+  const current = new URLSearchParams(window.location.search);
+  if (current.get('debug') === '1') sp.set('debug', '1');
   const url = `${window.location.pathname}?${sp.toString()}`;
   window.history.replaceState(null, '', url);
 }
