@@ -1885,13 +1885,14 @@
   }
 
   // src/engine/clone-system.ts
-  function computeBandClones(L) {
-    const step = (L.numRows + 3) * L.pegSpacing;
+  var DEFAULT_GAP = 4;
+  function computeBandClones(L, gap = DEFAULT_GAP) {
+    const step = ((L.numRows - 1) / 2 + gap) * L.pegSpacing;
     if (step <= 0) return [];
     const clones = [];
-    const bottomRowW = (L.numRows - 1) * L.pegSpacing;
-    const maxReach = L.width / 2 + bottomRowW;
-    for (let i = 1; step * i - bottomRowW / 2 < maxReach; i++) {
+    const bottomRowHW = (L.numRows - 1) * L.pegSpacing / 2;
+    const maxReach = L.width / 2 + bottomRowHW;
+    for (let i = 1; step * i - bottomRowHW < maxReach; i++) {
       const flipped = i % 2 === 1;
       clones.push({ offsetX: step * i, flipY: flipped, index: i });
       clones.push({ offsetX: -step * i, flipY: flipped, index: -i });

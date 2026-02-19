@@ -27,26 +27,32 @@ export interface CloneState {
   grainAlpha: number;
 }
 
+/** Default gap between adjacent △▽ units, in pegSpacing units */
+const DEFAULT_GAP = 4;
+
 /**
  * Compute the band of clones that fit the current screen.
  * Center (△) is the main board and is NOT included in the result.
  * Odd distance from center = flipped (▽), even = normal (△).
  *
- * Step = (numRows + 3) × pegSpacing
- * → bottom-row gap between adjacent units ≈ 4 × pegSpacing.
- * Upper rows are narrower so their gaps are proportionally wider,
- * creating a natural visual separation that tightens toward the base.
+ * Because △ and ▽ have complementary row widths at every height,
+ * the gap between adjacent units is constant across all row levels:
+ *   step = (numRows - 1) / 2 * pegSpacing + gap * pegSpacing
+ *
+ * gap > 0: visible separator ("あぜ道")
+ * gap = 0: edges touch
+ * gap < 0: units overlap
  */
-export function computeBandClones(L: Layout): CloneConfig[] {
-  const step = (L.numRows + 3) * L.pegSpacing;
+export function computeBandClones(L: Layout, gap: number = DEFAULT_GAP): CloneConfig[] {
+  const step = ((L.numRows - 1) / 2 + gap) * L.pegSpacing;
 
   if (step <= 0) return [];
 
   const clones: CloneConfig[] = [];
-  const bottomRowW = (L.numRows - 1) * L.pegSpacing;
-  const maxReach = L.width / 2 + bottomRowW; // include partially visible units
+  const bottomRowHW = (L.numRows - 1) * L.pegSpacing / 2;
+  const maxReach = L.width / 2 + bottomRowHW; // include partially visible units
 
-  for (let i = 1; step * i - bottomRowW / 2 < maxReach; i++) {
+  for (let i = 1; step * i - bottomRowHW < maxReach; i++) {
     const flipped = i % 2 === 1;
     clones.push({ offsetX:  step * i, flipY: flipped, index:  i });
     clones.push({ offsetX: -step * i, flipY: flipped, index: -i });
