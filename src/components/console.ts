@@ -359,11 +359,11 @@ export function createConsole(
   const barsPresetRow = document.createElement('div');
   barsPresetRow.className = 'gt-preset-row';
   const BARS_PRESETS = [
-    { label: '4', val: 4 },
-    { label: '8', val: 8 },
-    { label: '16', val: 16 },
     { label: '32', val: 32 },
     { label: '64', val: 64 },
+    { label: '128', val: 128 },
+    { label: '256', val: 256 },
+    { label: '512', val: 512 },
   ];
   const barsPresetBtns: HTMLButtonElement[] = [];
   for (const p of BARS_PRESETS) {
@@ -389,7 +389,7 @@ export function createConsole(
   barsSlider.type = 'range';
   barsSlider.className = 'gt-slider-input';
   barsSlider.min = '1';
-  barsSlider.max = '128';
+  barsSlider.max = '999';
   barsSlider.step = '1';
   barsSlider.value = String(currentBars);
   barsSlider.style.flex = '1';
@@ -404,7 +404,7 @@ export function createConsole(
   function setBarsVal(v: number): void {
     v = Math.max(1, Math.min(999, v));
     currentBars = v;
-    barsSlider.value = String(Math.min(128, v));
+    barsSlider.value = String(Math.min(999, v));
     barsDisplay.value = String(v);
     updateDuration();
     ctrl.onBarsChange?.(v);

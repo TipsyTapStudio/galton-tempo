@@ -601,19 +601,21 @@
     const gaussVal = 1 - Math.exp(-(d * d) / (2 * sigPx * sigPx));
     return L.nozzleHW + (L.hopperTopHW - L.nozzleHW) * gaussVal;
   }
+  var HOPPER_GRAIN_CAP = 500;
   function computeHopperGrains(L, totalCount, grainR) {
     const grains = [];
+    const displayCount = Math.min(totalCount, HOPPER_GRAIN_CAP);
     const d = grainR * 2.1;
     const rowH = d * SQRT3_2;
     const cx = L.centerX;
     let row = 0;
     let y = L.hopperBottom - grainR * 1.5;
-    while (grains.length < totalCount) {
+    while (grains.length < displayCount) {
       const hw = gaussianHW(y, L);
       const usableW = hw * 0.88;
       const xOff = row % 2 === 1 ? d * 0.5 : 0;
       const nCols = Math.max(1, Math.floor(usableW * 2 / d));
-      for (let c = 0; c < nCols && grains.length < totalCount; c++) {
+      for (let c = 0; c < nCols && grains.length < displayCount; c++) {
         const gx = cx - usableW + xOff + c * d + grainR;
         const seed = row * 1009 + c * 7919 + 31337 & 2147483647;
         const jx = (seed % 1e3 / 1e3 - 0.5) * grainR * 0.5;
@@ -1613,11 +1615,11 @@
     const barsPresetRow = document.createElement("div");
     barsPresetRow.className = "gt-preset-row";
     const BARS_PRESETS = [
-      { label: "4", val: 4 },
-      { label: "8", val: 8 },
-      { label: "16", val: 16 },
       { label: "32", val: 32 },
-      { label: "64", val: 64 }
+      { label: "64", val: 64 },
+      { label: "128", val: 128 },
+      { label: "256", val: 256 },
+      { label: "512", val: 512 }
     ];
     const barsPresetBtns = [];
     for (const p of BARS_PRESETS) {
@@ -1642,7 +1644,7 @@
     barsSlider.type = "range";
     barsSlider.className = "gt-slider-input";
     barsSlider.min = "1";
-    barsSlider.max = "128";
+    barsSlider.max = "999";
     barsSlider.step = "1";
     barsSlider.value = String(currentBars);
     barsSlider.style.flex = "1";
@@ -1656,7 +1658,7 @@
     function setBarsVal(v) {
       v = Math.max(1, Math.min(999, v));
       currentBars = v;
-      barsSlider.value = String(Math.min(128, v));
+      barsSlider.value = String(Math.min(999, v));
       barsDisplay.value = String(v);
       updateDuration();
       ctrl.onBarsChange?.(v);

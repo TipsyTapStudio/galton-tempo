@@ -174,10 +174,13 @@ export function gaussianHW(y: number, L: Layout): number {
 
 export interface HopperGrain { x: number; y: number; }
 
+const HOPPER_GRAIN_CAP = 500;
+
 export function computeHopperGrains(
   L: Layout, totalCount: number, grainR: number,
 ): HopperGrain[] {
   const grains: HopperGrain[] = [];
+  const displayCount = Math.min(totalCount, HOPPER_GRAIN_CAP);
   const d = grainR * 2.1;
   const rowH = d * SQRT3_2;
   const cx = L.centerX;
@@ -185,13 +188,13 @@ export function computeHopperGrains(
   let row = 0;
   let y = L.hopperBottom - grainR * 1.5;
 
-  while (grains.length < totalCount) {
+  while (grains.length < displayCount) {
     const hw = gaussianHW(y, L);
     const usableW = hw * 0.88;
     const xOff = (row % 2 === 1) ? d * 0.5 : 0;
     const nCols = Math.max(1, Math.floor((usableW * 2) / d));
 
-    for (let c = 0; c < nCols && grains.length < totalCount; c++) {
+    for (let c = 0; c < nCols && grains.length < displayCount; c++) {
       const gx = cx - usableW + xOff + c * d + grainR;
       const seed = (row * 1009 + c * 7919 + 31337) & 0x7fffffff;
       const jx = ((seed % 1000) / 1000 - 0.5) * grainR * 0.5;
