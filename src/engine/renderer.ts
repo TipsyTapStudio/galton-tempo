@@ -96,7 +96,9 @@ export class Renderer {
     // Clone band (behind main board)
     for (const cs of cloneStates) {
       this.gr.drawPegsTransformed(ctx, L, this.currentTheme, cs.beatPhase, cs.config.offsetX, cs.config.flipY);
+      ctx.globalAlpha = cs.grainAlpha;
       this.gr.drawParticlesTransformed(ctx, L, particles, cs.config.offsetX, cs.config.flipY);
+      ctx.globalAlpha = 1;
     }
 
     // Progress bar

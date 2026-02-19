@@ -23,22 +23,25 @@ export interface CloneState {
   config: CloneConfig;
   /** Current beat phase [0..1) — controls peg glow wave */
   beatPhase: number;
+  /** Opacity multiplier for grain particles (0..1) */
+  grainAlpha: number;
 }
 
 /**
  * Compute the band of clones that fit the current screen.
  * Center (△) is the main board and is NOT included in the result.
  * Odd distance from center = flipped (▽), even = normal (△).
- * Margin between adjacent units: pegSpacing × 1.5
+ *
+ * Target: 5 visible units (△▽△▽△) with outer △ half cut-off.
+ * → 4 steps span the full screen width → step = width / 4.
  */
 export function computeBandClones(L: Layout): CloneConfig[] {
-  const unitW = L.numRows * L.pegSpacing;
-  const margin = L.pegSpacing * 1.5;
-  const step = unitW + margin;
+  const step = L.width / 4;
 
   if (step <= 0) return [];
 
   const clones: CloneConfig[] = [];
+  const unitW = L.numRows * L.pegSpacing;
   const maxReach = L.width / 2 + unitW; // include partially visible units
 
   for (let i = 1; step * i - unitW / 2 < maxReach; i++) {
@@ -53,10 +56,11 @@ export function computeBandClones(L: Layout): CloneConfig[] {
 /**
  * Build per-frame CloneState array.
  * Phase 1: every clone uses the same beatPhase as the main board.
+ * Clone grains are rendered at reduced opacity.
  */
 export function updateCloneStates(
   configs: CloneConfig[],
   beatPhase: number,
 ): CloneState[] {
-  return configs.map(config => ({ config, beatPhase }));
+  return configs.map(config => ({ config, beatPhase, grainAlpha: 0.35 }));
 }

@@ -1005,7 +1005,9 @@
       ctx.clearRect(0, 0, L.width, L.height);
       for (const cs of cloneStates) {
         this.gr.drawPegsTransformed(ctx, L, this.currentTheme, cs.beatPhase, cs.config.offsetX, cs.config.flipY);
+        ctx.globalAlpha = cs.grainAlpha;
         this.gr.drawParticlesTransformed(ctx, L, particles, cs.config.offsetX, cs.config.flipY);
+        ctx.globalAlpha = 1;
       }
       if (totalParticles > 0) {
         const progress = Math.min(1, emittedCount / totalParticles);
@@ -1884,11 +1886,10 @@
 
   // src/engine/clone-system.ts
   function computeBandClones(L) {
-    const unitW = L.numRows * L.pegSpacing;
-    const margin = L.pegSpacing * 1.5;
-    const step = unitW + margin;
+    const step = L.width / 4;
     if (step <= 0) return [];
     const clones = [];
+    const unitW = L.numRows * L.pegSpacing;
     const maxReach = L.width / 2 + unitW;
     for (let i = 1; step * i - unitW / 2 < maxReach; i++) {
       const flipped = i % 2 === 1;
@@ -1898,7 +1899,7 @@
     return clones;
   }
   function updateCloneStates(configs, beatPhase) {
-    return configs.map((config) => ({ config, beatPhase }));
+    return configs.map((config) => ({ config, beatPhase, grainAlpha: 0.35 }));
   }
 
   // src/main.ts
