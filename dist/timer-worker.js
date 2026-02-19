@@ -35,7 +35,7 @@
         paused = false;
         running = true;
         if (interval !== null) clearInterval(interval);
-        interval = setInterval(tick, 100);
+        interval = setInterval(tick, 10);
         tick();
         break;
       case "ADD_TIME":

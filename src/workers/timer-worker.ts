@@ -53,7 +53,7 @@ self.onmessage = (e: MessageEvent<InMsg>) => {
       paused = false;
       running = true;
       if (interval !== null) clearInterval(interval);
-      interval = setInterval(tick, 100);
+      interval = setInterval(tick, 10);
       tick();
       break;
 
