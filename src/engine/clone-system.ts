@@ -32,19 +32,21 @@ export interface CloneState {
  * Center (△) is the main board and is NOT included in the result.
  * Odd distance from center = flipped (▽), even = normal (△).
  *
- * Target: 5 visible units (△▽△▽△) with outer △ half cut-off.
- * → 4 steps span the full screen width → step = width / 4.
+ * Step = (numRows + 3) × pegSpacing
+ * → bottom-row gap between adjacent units ≈ 4 × pegSpacing.
+ * Upper rows are narrower so their gaps are proportionally wider,
+ * creating a natural visual separation that tightens toward the base.
  */
 export function computeBandClones(L: Layout): CloneConfig[] {
-  const step = L.width / 4;
+  const step = (L.numRows + 3) * L.pegSpacing;
 
   if (step <= 0) return [];
 
   const clones: CloneConfig[] = [];
-  const unitW = L.numRows * L.pegSpacing;
-  const maxReach = L.width / 2 + unitW; // include partially visible units
+  const bottomRowW = (L.numRows - 1) * L.pegSpacing;
+  const maxReach = L.width / 2 + bottomRowW; // include partially visible units
 
-  for (let i = 1; step * i - unitW / 2 < maxReach; i++) {
+  for (let i = 1; step * i - bottomRowW / 2 < maxReach; i++) {
     const flipped = i % 2 === 1;
     clones.push({ offsetX:  step * i, flipY: flipped, index:  i });
     clones.push({ offsetX: -step * i, flipY: flipped, index: -i });

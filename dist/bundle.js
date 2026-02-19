@@ -1886,12 +1886,12 @@
 
   // src/engine/clone-system.ts
   function computeBandClones(L) {
-    const step = L.width / 4;
+    const step = (L.numRows + 3) * L.pegSpacing;
     if (step <= 0) return [];
     const clones = [];
-    const unitW = L.numRows * L.pegSpacing;
-    const maxReach = L.width / 2 + unitW;
-    for (let i = 1; step * i - unitW / 2 < maxReach; i++) {
+    const bottomRowW = (L.numRows - 1) * L.pegSpacing;
+    const maxReach = L.width / 2 + bottomRowW;
+    for (let i = 1; step * i - bottomRowW / 2 < maxReach; i++) {
       const flipped = i % 2 === 1;
       clones.push({ offsetX: step * i, flipY: flipped, index: i });
       clones.push({ offsetX: -step * i, flipY: flipped, index: -i });
