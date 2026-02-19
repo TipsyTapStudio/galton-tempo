@@ -16,6 +16,8 @@ import { Renderer, getThemeByName } from './engine/renderer';
 import { TimerBridge } from './engine/timer-bridge';
 import { AudioEngine } from './engine/audio';
 import { createConsole, applyPreset } from './components/console';
+import { computeBandClones, updateCloneStates } from './engine/clone-system';
+import type { CloneConfig } from './engine/clone-system';
 import type { SoundType } from './engine/audio';
 
 // ── Bootstrap ──
@@ -51,6 +53,10 @@ audio.soundType = params.sound as SoundType;
 // ── Apply initial theme ──
 
 renderer.setThemeByName(params.theme);
+
+// ── Clone band ──
+
+let cloneConfigs: CloneConfig[] = computeBandClones(renderer.layout);
 
 // ── Apply initial physics preset ──
 
@@ -212,17 +218,20 @@ function rebuildSim(): void {
   });
   renderer.clearStatic();
   renderer.resize(params.rows, totalBeats());
+  cloneConfigs = computeBandClones(renderer.layout);
 }
 
 function drawIdleFrame(): void {
   const tb = totalBeats();
-  renderer.drawFrame([], params.bpm, tb, 0, 0, params.bars, 0);
+  const cs = updateCloneStates(cloneConfigs, 0);
+  renderer.drawFrame([], params.bpm, tb, 0, 0, params.bars, 0, 0, cs);
 }
 
 function drawPausedFrame(): void {
   const currentBeat = sim.getCurrentBeat();
   const currentBar = Math.floor(currentBeat / BEATS_PER_BAR);
   const beatInBar = currentBeat % BEATS_PER_BAR;
+  const cs = updateCloneStates(cloneConfigs, 0);
   renderer.drawFrame(
     sim.activeParticles,
     params.bpm,
@@ -231,6 +240,8 @@ function drawPausedFrame(): void {
     currentBar,
     params.bars,
     beatInBar,
+    0,
+    cs,
   );
 }
 
@@ -310,6 +321,7 @@ function stopToIdle(): void {
 
 window.addEventListener('resize', () => {
   renderer.resize(params.rows, totalBeats());
+  cloneConfigs = computeBandClones(renderer.layout);
   if (appState === 'idle') {
     drawIdleFrame();
   } else if (paused || sim.allSettled) {
@@ -371,7 +383,8 @@ function frame(now: number): void {
   if (appState === 'stopping') {
     hopperFadeAlpha -= dtSec / 0.5;
     renderer.setHopperFadeAlpha(Math.max(0, hopperFadeAlpha));
-    renderer.drawFrame([], params.bpm, stoppingTotal, stoppingEmitted, 0, params.bars, 0);
+    const stopCs = updateCloneStates(cloneConfigs, 0);
+    renderer.drawFrame([], params.bpm, stoppingTotal, stoppingEmitted, 0, params.bars, 0, 0, stopCs);
     if (hopperFadeAlpha <= 0) {
       appState = 'idle';
       renderer.resetHopperFade();
@@ -399,6 +412,7 @@ function frame(now: number): void {
 
   const beatPhase = (sim.elapsedMs % sim.emitIntervalMs) / sim.emitIntervalMs;
 
+  const cs = updateCloneStates(cloneConfigs, beatPhase);
   renderer.drawFrame(
     sim.activeParticles,
     params.bpm,
@@ -408,6 +422,7 @@ function frame(now: number): void {
     params.bars,
     beatInBar,
     beatPhase,
+    cs,
   );
 
   // Stop only when ALL particles have been both emitted AND settled

@@ -904,6 +904,29 @@
       this.binCounts[centerBin] += totalParticles - placed;
       this.rebakeStatic(L, theme);
     }
+    drawPegsTransformed(ctx, L, theme, beatPhase, offsetX, flipY) {
+      ctx.save();
+      ctx.translate(offsetX, 0);
+      if (flipY) {
+        const cy = (L.boardTop + L.boardBottom) / 2;
+        ctx.translate(0, 2 * cy);
+        ctx.scale(1, -1);
+      }
+      this.drawPegs(ctx, L, theme, void 0, beatPhase);
+      ctx.restore();
+    }
+    drawParticlesTransformed(ctx, L, particles, offsetX, flipY) {
+      if (particles.length === 0) return;
+      ctx.save();
+      ctx.translate(offsetX, 0);
+      if (flipY) {
+        const cy = (L.boardTop + L.boardBottom) / 2;
+        ctx.translate(0, 2 * cy);
+        ctx.scale(1, -1);
+      }
+      this.drawParticles(ctx, L, particles);
+      ctx.restore();
+    }
     getGroundY(L, x) {
       const numBins = L.numRows + 1;
       let nearestBin = 0;
@@ -976,10 +999,14 @@
     bakeParticle(p) {
       this.gr.bakeParticle(this.layout, p);
     }
-    drawFrame(particles, bpm, totalParticles, emittedCount, currentBar, totalBars, beatInBar, beatPhase = 0) {
+    drawFrame(particles, bpm, totalParticles, emittedCount, currentBar, totalBars, beatInBar, beatPhase = 0, cloneStates = []) {
       const L = this.layout;
       const ctx = this.gr.dCtx;
       ctx.clearRect(0, 0, L.width, L.height);
+      for (const cs of cloneStates) {
+        this.gr.drawPegsTransformed(ctx, L, this.currentTheme, cs.beatPhase, cs.config.offsetX, cs.config.flipY);
+        this.gr.drawParticlesTransformed(ctx, L, particles, cs.config.offsetX, cs.config.flipY);
+      }
       if (totalParticles > 0) {
         const progress = Math.min(1, emittedCount / totalParticles);
         const [r, g, b] = this.currentTheme.segmentRGB;
@@ -1855,6 +1882,25 @@
     }
   }
 
+  // src/engine/clone-system.ts
+  function computeBandClones(L) {
+    const unitW = L.numRows * L.pegSpacing;
+    const margin = L.pegSpacing * 1.5;
+    const step = unitW + margin;
+    if (step <= 0) return [];
+    const clones = [];
+    const maxReach = L.width / 2 + unitW;
+    for (let i = 1; step * i - unitW / 2 < maxReach; i++) {
+      const flipped = i % 2 === 1;
+      clones.push({ offsetX: step * i, flipY: flipped, index: i });
+      clones.push({ offsetX: -step * i, flipY: flipped, index: -i });
+    }
+    return clones;
+  }
+  function updateCloneStates(configs, beatPhase) {
+    return configs.map((config) => ({ config, beatPhase }));
+  }
+
   // src/main.ts
   var params = readParams();
   writeParams(params);
@@ -1874,6 +1920,7 @@
   var audio = new AudioEngine();
   audio.soundType = params.sound;
   renderer.setThemeByName(params.theme);
+  var cloneConfigs = computeBandClones(renderer.layout);
   applyPreset(params.mode);
   var timerBridge = new TimerBridge();
   var lastBeatIndex = -1;
@@ -1993,15 +2040,18 @@
     });
     renderer.clearStatic();
     renderer.resize(params.rows, totalBeats());
+    cloneConfigs = computeBandClones(renderer.layout);
   }
   function drawIdleFrame() {
     const tb = totalBeats();
-    renderer.drawFrame([], params.bpm, tb, 0, 0, params.bars, 0);
+    const cs = updateCloneStates(cloneConfigs, 0);
+    renderer.drawFrame([], params.bpm, tb, 0, 0, params.bars, 0, 0, cs);
   }
   function drawPausedFrame() {
     const currentBeat = sim.getCurrentBeat();
     const currentBar = Math.floor(currentBeat / BEATS_PER_BAR);
     const beatInBar = currentBeat % BEATS_PER_BAR;
+    const cs = updateCloneStates(cloneConfigs, 0);
     renderer.drawFrame(
       sim.activeParticles,
       params.bpm,
@@ -2009,7 +2059,9 @@
       sim.emittedCount,
       currentBar,
       params.bars,
-      beatInBar
+      beatInBar,
+      0,
+      cs
     );
   }
   function togglePause() {
@@ -2065,6 +2117,7 @@
   }
   window.addEventListener("resize", () => {
     renderer.resize(params.rows, totalBeats());
+    cloneConfigs = computeBandClones(renderer.layout);
     if (appState === "idle") {
       drawIdleFrame();
     } else if (paused || sim.allSettled) {
@@ -2109,7 +2162,8 @@
     if (appState === "stopping") {
       hopperFadeAlpha -= dtSec / 0.5;
       renderer.setHopperFadeAlpha(Math.max(0, hopperFadeAlpha));
-      renderer.drawFrame([], params.bpm, stoppingTotal, stoppingEmitted, 0, params.bars, 0);
+      const stopCs = updateCloneStates(cloneConfigs, 0);
+      renderer.drawFrame([], params.bpm, stoppingTotal, stoppingEmitted, 0, params.bars, 0, 0, stopCs);
       if (hopperFadeAlpha <= 0) {
         appState = "idle";
         renderer.resetHopperFade();
@@ -2129,6 +2183,7 @@
     const currentBar = Math.floor(currentBeat / BEATS_PER_BAR);
     const beatInBar = currentBeat % BEATS_PER_BAR;
     const beatPhase = sim.elapsedMs % sim.emitIntervalMs / sim.emitIntervalMs;
+    const cs = updateCloneStates(cloneConfigs, beatPhase);
     renderer.drawFrame(
       sim.activeParticles,
       params.bpm,
@@ -2137,7 +2192,8 @@
       currentBar,
       params.bars,
       beatInBar,
-      beatPhase
+      beatPhase,
+      cs
     );
     const trulyDone = sim.allSettled && sim.emittedCount >= sim.totalParticles;
     if (trulyDone) {

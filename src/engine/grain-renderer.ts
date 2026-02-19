@@ -336,6 +336,44 @@ export class GrainRenderer {
     this.rebakeStatic(L, theme);
   }
 
+  drawPegsTransformed(
+    ctx: CanvasRenderingContext2D,
+    L: Layout,
+    theme: ClockTheme,
+    beatPhase: number,
+    offsetX: number,
+    flipY: boolean,
+  ): void {
+    ctx.save();
+    ctx.translate(offsetX, 0);
+    if (flipY) {
+      const cy = (L.boardTop + L.boardBottom) / 2;
+      ctx.translate(0, 2 * cy);
+      ctx.scale(1, -1);
+    }
+    this.drawPegs(ctx, L, theme, undefined, beatPhase);
+    ctx.restore();
+  }
+
+  drawParticlesTransformed(
+    ctx: CanvasRenderingContext2D,
+    L: Layout,
+    particles: Particle[],
+    offsetX: number,
+    flipY: boolean,
+  ): void {
+    if (particles.length === 0) return;
+    ctx.save();
+    ctx.translate(offsetX, 0);
+    if (flipY) {
+      const cy = (L.boardTop + L.boardBottom) / 2;
+      ctx.translate(0, 2 * cy);
+      ctx.scale(1, -1);
+    }
+    this.drawParticles(ctx, L, particles);
+    ctx.restore();
+  }
+
   getGroundY(L: Layout, x: number): number {
     const numBins = L.numRows + 1;
     let nearestBin = 0;

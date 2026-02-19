@@ -9,6 +9,7 @@ import type { ClockTheme } from './seven-seg';
 import { computeLayout, pegX, pegY } from './layout';
 import type { Layout } from './layout';
 import { GrainRenderer } from './grain-renderer';
+import type { CloneState } from './clone-system';
 
 export class Renderer {
   layout!: Layout;
@@ -86,10 +87,17 @@ export class Renderer {
     totalBars: number,
     beatInBar: number,
     beatPhase: number = 0,
+    cloneStates: CloneState[] = [],
   ): void {
     const L = this.layout;
     const ctx = this.gr.dCtx;
     ctx.clearRect(0, 0, L.width, L.height);
+
+    // Clone band (behind main board)
+    for (const cs of cloneStates) {
+      this.gr.drawPegsTransformed(ctx, L, this.currentTheme, cs.beatPhase, cs.config.offsetX, cs.config.flipY);
+      this.gr.drawParticlesTransformed(ctx, L, particles, cs.config.offsetX, cs.config.flipY);
+    }
 
     // Progress bar
     if (totalParticles > 0) {
@@ -145,4 +153,4 @@ export class Renderer {
 }
 
 export { CLOCK_THEMES, getThemeByName };
-export type { ClockTheme, Layout };
+export type { ClockTheme, Layout, CloneState };
