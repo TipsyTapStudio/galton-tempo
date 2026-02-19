@@ -8,13 +8,19 @@ export interface PerfStats {
   frameTimeMs: number;
   frameTimePeak: number;
   cloneCount: number;
+  /** Latest beat detection latency (ms). How late the beat was detected. */
+  beatLatencyMs: number;
+  /** Worst beat latency in recent history (ms). */
+  beatLatencyPeak: number;
 }
 
 const WINDOW = 60; // rolling window size (frames)
+const BEAT_WINDOW = 16; // keep last N beat latencies
 
 export class PerfTracker {
   private frameTimes: number[] = [];
   private timestamps: number[] = [];
+  private beatLatencies: number[] = [];
 
   /** Call at the very start of frame(). Returns a token for endFrame(). */
   beginFrame(): number {
@@ -32,10 +38,18 @@ export class PerfTracker {
     }
   }
 
+  /** Record a beat detection event with its latency. */
+  recordBeat(latencyMs: number): void {
+    this.beatLatencies.push(latencyMs);
+    if (this.beatLatencies.length > BEAT_WINDOW) {
+      this.beatLatencies.shift();
+    }
+  }
+
   /** Compute current stats snapshot. */
   getStats(cloneCount: number): PerfStats {
     const n = this.timestamps.length;
-    if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount };
+    if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount, beatLatencyMs: 0, beatLatencyPeak: 0 };
 
     const elapsed = this.timestamps[n - 1] - this.timestamps[0];
     const fps = elapsed > 0 ? (n - 1) / elapsed * 1000 : 0;
@@ -44,7 +58,12 @@ export class PerfTracker {
     let peak = 0;
     for (const t of this.frameTimes) { if (t > peak) peak = t; }
 
-    return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount };
+    const bn = this.beatLatencies.length;
+    const beatLatencyMs = bn > 0 ? this.beatLatencies[bn - 1] : 0;
+    let beatPeak = 0;
+    for (const b of this.beatLatencies) { if (b > beatPeak) beatPeak = b; }
+
+    return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount, beatLatencyMs, beatLatencyPeak: beatPeak };
   }
 }
 
@@ -58,16 +77,24 @@ export function drawHUD(
   ctx.font = '11px monospace';
   ctx.textAlign = 'left';
 
-  const warn = stats.fps < 55;
-  ctx.fillStyle = warn ? 'rgba(255,70,70,0.9)' : 'rgba(0,255,100,0.75)';
-
   const x = 8;
   const lineH = 15;
-  let y = screenH - 8 - lineH * 2;
+  let y = screenH - 8 - lineH * 3;
 
+  // FPS line
+  const fpsWarn = stats.fps < 55;
+  ctx.fillStyle = fpsWarn ? 'rgba(255,70,70,0.9)' : 'rgba(0,255,100,0.75)';
   ctx.fillText(`FPS ${stats.fps.toFixed(1)}  Frame ${stats.frameTimeMs.toFixed(1)}ms  Peak ${stats.frameTimePeak.toFixed(0)}ms`, x, y);
   y += lineH;
+
+  // Clones line
   ctx.fillText(`Clones ${stats.cloneCount}`, x, y);
+  y += lineH;
+
+  // Beat latency line
+  const beatWarn = stats.beatLatencyPeak > 30;
+  ctx.fillStyle = beatWarn ? 'rgba(255,170,50,0.9)' : 'rgba(0,255,100,0.75)';
+  ctx.fillText(`Beat +${stats.beatLatencyMs.toFixed(0)}ms  Peak +${stats.beatLatencyPeak.toFixed(0)}ms`, x, y);
 
   ctx.restore();
 }

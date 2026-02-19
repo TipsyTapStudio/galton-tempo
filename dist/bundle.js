@@ -947,10 +947,12 @@
 
   // src/engine/perf-hud.ts
   var WINDOW = 60;
+  var BEAT_WINDOW = 16;
   var PerfTracker = class {
     constructor() {
       this.frameTimes = [];
       this.timestamps = [];
+      this.beatLatencies = [];
     }
     /** Call at the very start of frame(). Returns a token for endFrame(). */
     beginFrame() {
@@ -966,10 +968,17 @@
         this.timestamps.shift();
       }
     }
+    /** Record a beat detection event with its latency. */
+    recordBeat(latencyMs) {
+      this.beatLatencies.push(latencyMs);
+      if (this.beatLatencies.length > BEAT_WINDOW) {
+        this.beatLatencies.shift();
+      }
+    }
     /** Compute current stats snapshot. */
     getStats(cloneCount) {
       const n = this.timestamps.length;
-      if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount };
+      if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount, beatLatencyMs: 0, beatLatencyPeak: 0 };
       const elapsed = this.timestamps[n - 1] - this.timestamps[0];
       const fps = elapsed > 0 ? (n - 1) / elapsed * 1e3 : 0;
       const avg = this.frameTimes.reduce((a, b) => a + b, 0) / n;
@@ -977,21 +986,31 @@
       for (const t of this.frameTimes) {
         if (t > peak) peak = t;
       }
-      return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount };
+      const bn = this.beatLatencies.length;
+      const beatLatencyMs = bn > 0 ? this.beatLatencies[bn - 1] : 0;
+      let beatPeak = 0;
+      for (const b of this.beatLatencies) {
+        if (b > beatPeak) beatPeak = b;
+      }
+      return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount, beatLatencyMs, beatLatencyPeak: beatPeak };
     }
   };
   function drawHUD(ctx, stats, screenH) {
     ctx.save();
     ctx.font = "11px monospace";
     ctx.textAlign = "left";
-    const warn = stats.fps < 55;
-    ctx.fillStyle = warn ? "rgba(255,70,70,0.9)" : "rgba(0,255,100,0.75)";
     const x = 8;
     const lineH = 15;
-    let y = screenH - 8 - lineH * 2;
+    let y = screenH - 8 - lineH * 3;
+    const fpsWarn = stats.fps < 55;
+    ctx.fillStyle = fpsWarn ? "rgba(255,70,70,0.9)" : "rgba(0,255,100,0.75)";
     ctx.fillText(`FPS ${stats.fps.toFixed(1)}  Frame ${stats.frameTimeMs.toFixed(1)}ms  Peak ${stats.frameTimePeak.toFixed(0)}ms`, x, y);
     y += lineH;
     ctx.fillText(`Clones ${stats.cloneCount}`, x, y);
+    y += lineH;
+    const beatWarn = stats.beatLatencyPeak > 30;
+    ctx.fillStyle = beatWarn ? "rgba(255,170,50,0.9)" : "rgba(0,255,100,0.75)";
+    ctx.fillText(`Beat +${stats.beatLatencyMs.toFixed(0)}ms  Peak +${stats.beatLatencyPeak.toFixed(0)}ms`, x, y);
     ctx.restore();
   }
 
@@ -1990,6 +2009,10 @@
       const beatInBar = currentBeat % BEATS_PER_BAR;
       const accent = beatInBar === 0;
       audio.playBeat(accent);
+      if (perf) {
+        const expectedMs = (currentBeat - 1) * sim.emitIntervalMs;
+        perf.recordBeat(elapsedMs - expectedMs);
+      }
       lastBeatIndex = currentBeat;
     }
   };

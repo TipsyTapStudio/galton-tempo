@@ -79,6 +79,13 @@ timerBridge.onTick = (_remainingMs, elapsedMs) => {
     const beatInBar = currentBeat % BEATS_PER_BAR;
     const accent = beatInBar === 0;
     audio.playBeat(accent);
+
+    // Measure beat detection latency: how late vs ideal beat time
+    if (perf) {
+      const expectedMs = (currentBeat - 1) * sim.emitIntervalMs;
+      perf.recordBeat(elapsedMs - expectedMs);
+    }
+
     lastBeatIndex = currentBeat;
   }
 };
