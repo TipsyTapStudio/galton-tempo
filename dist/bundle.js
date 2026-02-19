@@ -6,7 +6,7 @@
   var VALID_MODES = ["standard", "heavy sand", "techno", "moon gravity", "super ball"];
   var DEFAULTS = {
     bpm: 120,
-    bars: 16,
+    bars: 128,
     rows: 24,
     s: 0,
     sound: "click",
@@ -1124,11 +1124,12 @@
       }
       const [lr, lg, lb] = this.currentTheme.segmentRGB;
       const digitH = Math.min(L.width * 0.025, L.height * 0.03);
+      const elementGap = digitH * 0.6;
       const bpmY = L.inlineTimerY;
       drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
       const dotR = Math.max(2, L.height * 4e-3);
       const dotGap = dotR * 5;
-      const dotY = bpmY + digitH / 2 + dotR * 3.5;
+      const dotY = bpmY + digitH / 2 + elementGap + dotR;
       const dotsStartX = L.centerX - 3 * dotGap / 2;
       for (let i = 0; i < 4; i++) {
         const dx = dotsStartX + i * dotGap;
@@ -1138,6 +1139,14 @@
         ctx.arc(dx, dotY, isActive ? dotR * 1.5 : dotR, 0, Math.PI * 2);
         ctx.fill();
       }
+      const barsFontSize = Math.max(9, digitH * 0.55);
+      const barsY = dotY + dotR * 1.5 + elementGap + barsFontSize * 0.35;
+      ctx.font = `${barsFontSize}px monospace`;
+      ctx.fillStyle = `rgba(${lr},${lg},${lb},0.45)`;
+      ctx.textAlign = "right";
+      ctx.fillText(`${currentBar + 1} `, L.centerX, barsY);
+      ctx.textAlign = "left";
+      ctx.fillText(`/ ${totalBars}`, L.centerX, barsY);
       this.gr.drawHopper(ctx, L, emittedCount, totalParticles2);
       this.gr.drawPegs(ctx, L, this.currentTheme, void 0, beatPhase);
       this.gr.drawParticles(ctx, L, particles);

@@ -18,7 +18,7 @@ const VALID_MODES = ['standard', 'heavy sand', 'techno', 'moon gravity', 'super 
 
 const DEFAULTS: AppParams = {
   bpm: 120,
-  bars: 16,
+  bars: 128,
   rows: 24,
   s: 0,
   sound: 'click',
