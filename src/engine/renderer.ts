@@ -10,6 +10,8 @@ import { computeLayout, pegX, pegY } from './layout';
 import type { Layout } from './layout';
 import { GrainRenderer } from './grain-renderer';
 import type { CloneState } from './clone-system';
+import { drawHUD } from './perf-hud';
+import type { PerfStats } from './perf-hud';
 
 export class Renderer {
   layout!: Layout;
@@ -147,6 +149,10 @@ export class Renderer {
 
   fillStacks(numRows: number, totalParticles: number): void {
     this.gr.fillStacks(this.layout, numRows, totalParticles, this.currentTheme);
+  }
+
+  drawDebugHUD(stats: PerfStats): void {
+    drawHUD(this.gr.dCtx, stats, this.layout.height);
   }
 
   beginHopperFade(): void { this.gr.beginHopperFade(); }

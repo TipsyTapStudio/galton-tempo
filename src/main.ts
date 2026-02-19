@@ -19,11 +19,15 @@ import { createConsole, applyPreset } from './components/console';
 import { computeBandClones, updateCloneStates } from './engine/clone-system';
 import type { CloneConfig } from './engine/clone-system';
 import type { SoundType } from './engine/audio';
+import { PerfTracker } from './engine/perf-hud';
 
 // ── Bootstrap ──
 
 const params = readParams();
 writeParams(params);
+
+const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+const perf = DEBUG ? new PerfTracker() : null;
 
 const BEATS_PER_BAR = 4;
 
@@ -374,6 +378,8 @@ document.addEventListener('visibilitychange', () => {
 function frame(now: number): void {
   if (appState === 'paused' || appState === 'idle') return;
 
+  const perfT0 = perf?.beginFrame() ?? 0;
+
   if (lastTime === null) lastTime = now;
   const dtMs = Math.min(now - lastTime, 100);
   const dtSec = dtMs / 1000;
@@ -385,6 +391,10 @@ function frame(now: number): void {
     renderer.setHopperFadeAlpha(Math.max(0, hopperFadeAlpha));
     const stopCs = updateCloneStates(cloneConfigs, 0);
     renderer.drawFrame([], params.bpm, stoppingTotal, stoppingEmitted, 0, params.bars, 0, 0, stopCs);
+    if (perf) {
+      perf.endFrame(perfT0);
+      renderer.drawDebugHUD(perf.getStats(stopCs.length));
+    }
     if (hopperFadeAlpha <= 0) {
       appState = 'idle';
       renderer.resetHopperFade();
@@ -424,6 +434,11 @@ function frame(now: number): void {
     beatPhase,
     cs,
   );
+
+  if (perf) {
+    perf.endFrame(perfT0);
+    renderer.drawDebugHUD(perf.getStats(cs.length));
+  }
 
   // Stop only when ALL particles have been both emitted AND settled
   const trulyDone = sim.allSettled

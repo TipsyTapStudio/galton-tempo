@@ -943,6 +943,56 @@
     }
   };
 
+  // src/engine/perf-hud.ts
+  var WINDOW = 60;
+  var PerfTracker = class {
+    constructor() {
+      this.frameTimes = [];
+      this.timestamps = [];
+    }
+    /** Call at the very start of frame(). Returns a token for endFrame(). */
+    beginFrame() {
+      return performance.now();
+    }
+    /** Call after all frame work is done. */
+    endFrame(startTime) {
+      const now = performance.now();
+      this.frameTimes.push(now - startTime);
+      this.timestamps.push(now);
+      if (this.frameTimes.length > WINDOW) {
+        this.frameTimes.shift();
+        this.timestamps.shift();
+      }
+    }
+    /** Compute current stats snapshot. */
+    getStats(cloneCount) {
+      const n = this.timestamps.length;
+      if (n < 2) return { fps: 0, frameTimeMs: 0, frameTimePeak: 0, cloneCount };
+      const elapsed = this.timestamps[n - 1] - this.timestamps[0];
+      const fps = elapsed > 0 ? (n - 1) / elapsed * 1e3 : 0;
+      const avg = this.frameTimes.reduce((a, b) => a + b, 0) / n;
+      let peak = 0;
+      for (const t of this.frameTimes) {
+        if (t > peak) peak = t;
+      }
+      return { fps, frameTimeMs: avg, frameTimePeak: peak, cloneCount };
+    }
+  };
+  function drawHUD(ctx, stats, screenH) {
+    ctx.save();
+    ctx.font = "11px monospace";
+    ctx.textAlign = "left";
+    const warn = stats.fps < 55;
+    ctx.fillStyle = warn ? "rgba(255,70,70,0.9)" : "rgba(0,255,100,0.75)";
+    const x = 8;
+    const lineH = 15;
+    let y = screenH - 8 - lineH * 2;
+    ctx.fillText(`FPS ${stats.fps.toFixed(1)}  Frame ${stats.frameTimeMs.toFixed(1)}ms  Peak ${stats.frameTimePeak.toFixed(0)}ms`, x, y);
+    y += lineH;
+    ctx.fillText(`Clones ${stats.cloneCount}`, x, y);
+    ctx.restore();
+  }
+
   // src/engine/renderer.ts
   var Renderer = class {
     constructor(container2, numRows, totalParticles) {
@@ -1040,6 +1090,9 @@
     }
     fillStacks(numRows, totalParticles) {
       this.gr.fillStacks(this.layout, numRows, totalParticles, this.currentTheme);
+    }
+    drawDebugHUD(stats) {
+      drawHUD(this.gr.dCtx, stats, this.layout.height);
     }
     beginHopperFade() {
       this.gr.beginHopperFade();
@@ -1906,6 +1959,8 @@
   // src/main.ts
   var params = readParams();
   writeParams(params);
+  var DEBUG = new URLSearchParams(window.location.search).get("debug") === "1";
+  var perf = DEBUG ? new PerfTracker() : null;
   var BEATS_PER_BAR = 4;
   var rng = createPRNG(params.s);
   function totalBeats() {
@@ -2157,6 +2212,7 @@
   });
   function frame(now) {
     if (appState === "paused" || appState === "idle") return;
+    const perfT0 = perf?.beginFrame() ?? 0;
     if (lastTime === null) lastTime = now;
     const dtMs = Math.min(now - lastTime, 100);
     const dtSec = dtMs / 1e3;
@@ -2166,6 +2222,10 @@
       renderer.setHopperFadeAlpha(Math.max(0, hopperFadeAlpha));
       const stopCs = updateCloneStates(cloneConfigs, 0);
       renderer.drawFrame([], params.bpm, stoppingTotal, stoppingEmitted, 0, params.bars, 0, 0, stopCs);
+      if (perf) {
+        perf.endFrame(perfT0);
+        renderer.drawDebugHUD(perf.getStats(stopCs.length));
+      }
       if (hopperFadeAlpha <= 0) {
         appState = "idle";
         renderer.resetHopperFade();
@@ -2197,6 +2257,10 @@
       beatPhase,
       cs
     );
+    if (perf) {
+      perf.endFrame(perfT0);
+      renderer.drawDebugHUD(perf.getStats(cs.length));
+    }
     const trulyDone = sim.allSettled && sim.emittedCount >= sim.totalParticles;
     if (trulyDone) {
       cancelAnimationFrame(rafId);
