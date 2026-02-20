@@ -52,7 +52,7 @@ export function computeLayout(
   const safeH = h - topMargin - bottomMargin;
 
   const dxFromWidth = contentW / (numRows + 2);
-  const inlineTimerH = h * 0.10;  // BPM + beat dots + bars counter
+  const inlineTimerH = h * 0.08;  // BPM + beat dots + bars counter
   const gapBudget = h * 0.03;
   const availableForSystem = safeH - inlineTimerH - gapBudget;
 
@@ -75,13 +75,13 @@ export function computeLayout(
 
   const taperH = Math.min(safeH * 0.25, Math.max(boardH / 3, pegSpacing * 2.5));
 
-  const hopperToGrid = Math.max(pegSpacing * 0.6, h * 0.012);
-  const gridToAcc = Math.max(pegSpacing * 0.7, h * 0.015);
+  const hopperToGrid = Math.min(h * 0.03, Math.max(pegSpacing * 0.6, h * 0.012));
+  const gridToAcc = Math.min(h * 0.03, Math.max(pegSpacing * 0.7, h * 0.015));
 
   const accBottom = h - bottomMargin;
   const aboveAccH = inlineTimerH + taperH + hopperToGrid + boardH + gridToAcc;
   const accHeight_available = safeH - aboveAccH;
-  const accHeight = Math.max(pegSpacing * 2, Math.min(accHeight_available, boardH / 2));
+  const accHeight = Math.max(h * 0.06, Math.min(accHeight_available, boardH / 2));
 
   const maxProb = maxBinProbability(numRows);
   const maxBinCount = maxProb * totalParticles * 1.15;
@@ -189,7 +189,7 @@ export function computeHopperGrains(
   let y = L.hopperBottom - grainR * 1.5;
 
   while (grains.length < displayCount) {
-    if (y < L.hopperTop) break;
+    if (y < L.hopperTop + grainR * 3) break;
     const hw = gaussianHW(y, L);
     const usableW = hw * 0.88;
     const xOff = (row % 2 === 1) ? d * 0.5 : 0;
