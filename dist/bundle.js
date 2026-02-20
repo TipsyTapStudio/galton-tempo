@@ -696,7 +696,7 @@
       const bin = p.bin;
       this.binCounts[bin]++;
       const count = this.binCounts[bin];
-      const binX = pegX(L, L.numRows - 1, bin);
+      const binX = pegX(L, L.numRows, bin);
       const mr = L.miniGrainR;
       const d = mr * 2.1;
       const rowH = L.stackRowH;
@@ -724,7 +724,7 @@
       this.sCtx.fillStyle = this.staticGrainFill;
       this.sCtx.beginPath();
       for (let bin = 0; bin <= L.numRows; bin++) {
-        const binX = pegX(L, L.numRows - 1, bin);
+        const binX = pegX(L, L.numRows, bin);
         for (let k = 1; k <= this.binCounts[bin]; k++) {
           const hexOff = k % 2 === 0 ? d * 0.5 : 0;
           const jx = stackJitterX(bin, k, maxJitterX);
@@ -954,7 +954,7 @@
       let nearestBin = 0;
       let minDist = Infinity;
       for (let b = 0; b < numBins; b++) {
-        const bx = pegX(L, L.numRows - 1, b);
+        const bx = pegX(L, L.numRows, b);
         const dist = Math.abs(x - bx);
         if (dist < minDist) {
           minDist = dist;
