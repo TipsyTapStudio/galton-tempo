@@ -491,7 +491,7 @@
     const bottomMargin = h * 0.15;
     const safeH = h - topMargin - bottomMargin;
     const dxFromWidth = contentW / (numRows + 2);
-    const inlineTimerH = h * 0.06;
+    const inlineTimerH = h * 0.1;
     const gapBudget = h * 0.03;
     const availableForSystem = safeH - inlineTimerH - gapBudget;
     const boardH_target = availableForSystem * 3 / 5;
@@ -505,7 +505,7 @@
     const gridHW = numRows * pegSpacing / 2;
     const hopperTopHW = Math.max(pegSpacing * 4, gridHW * 1.3);
     const hopperRectHW = hopperTopHW;
-    const taperH = Math.max(boardH / 3, pegSpacing * 2.5);
+    const taperH = Math.min(safeH * 0.25, Math.max(boardH / 3, pegSpacing * 2.5));
     const hopperToGrid = Math.max(pegSpacing * 0.6, h * 0.012);
     const gridToAcc = Math.max(pegSpacing * 0.7, h * 0.015);
     const accBottom = h - bottomMargin;
@@ -521,7 +521,7 @@
     const hopperTop = hopperBottom - taperH;
     const hopperJunction = hopperTop;
     const emitY = hopperBottom + hopperToGrid * 0.55;
-    const inlineTimerY = Math.max(topMargin + inlineTimerH * 0.5, hopperTop - inlineTimerH * 0.6);
+    const inlineTimerY = Math.max(topMargin + inlineTimerH * 0.35, hopperTop - inlineTimerH * 0.9);
     const stackScale = accHeight * 0.85 / (maxProb * totalParticles2);
     const d_natural = grainRadius * 1.6;
     const rowH_natural = d_natural * SQRT3_2;
@@ -611,6 +611,7 @@
     let row = 0;
     let y = L.hopperBottom - grainR * 1.5;
     while (grains.length < displayCount) {
+      if (y < L.hopperTop) break;
       const hw = gaussianHW(y, L);
       const usableW = hw * 0.88;
       const xOff = row % 2 === 1 ? d * 0.5 : 0;
