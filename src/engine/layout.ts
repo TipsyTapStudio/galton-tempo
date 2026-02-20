@@ -52,7 +52,7 @@ export function computeLayout(
   const safeH = h - topMargin - bottomMargin;
 
   const dxFromWidth = contentW / (numRows + 2);
-  const inlineTimerH = h * 0.08;  // BPM + beat dots + bars counter
+  const inlineTimerH = h * 0.10;  // BPM + beat dots + bars counter
   const gapBudget = h * 0.03;
   const availableForSystem = safeH - inlineTimerH - gapBudget;
 

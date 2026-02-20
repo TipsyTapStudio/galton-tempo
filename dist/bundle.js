@@ -491,7 +491,7 @@
     const bottomMargin = h * 0.15;
     const safeH = h - topMargin - bottomMargin;
     const dxFromWidth = contentW / (numRows + 2);
-    const inlineTimerH = h * 0.08;
+    const inlineTimerH = h * 0.1;
     const gapBudget = h * 0.03;
     const availableForSystem = safeH - inlineTimerH - gapBudget;
     const boardH_target = availableForSystem * 3 / 5;
@@ -1125,12 +1125,12 @@
         ctx.fillRect(0, 0, L.width * progress, 2);
       }
       const [lr, lg, lb] = this.currentTheme.segmentRGB;
-      const digitH = Math.min(L.width * 0.025, L.height * 0.03);
-      const elementGap = digitH * 0.6;
+      const digitH = Math.max(16, Math.min(L.width * 0.04, L.height * 0.04));
+      const elementGap = digitH * 0.4;
       const bpmY = L.inlineTimerY;
       drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
-      const dotR = Math.max(2, L.height * 4e-3);
-      const dotGap = dotR * 5;
+      const dotR = Math.max(2.5, digitH * 0.08);
+      const dotGap = dotR * 4.5;
       const dotY = bpmY + digitH / 2 + elementGap + dotR;
       const dotsStartX = L.centerX - 3 * dotGap / 2;
       for (let i = 0; i < 4; i++) {

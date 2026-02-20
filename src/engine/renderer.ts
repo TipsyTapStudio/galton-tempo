@@ -111,16 +111,16 @@ export class Renderer {
       ctx.fillRect(0, 0, L.width * progress, 2);
     }
 
-    // BPM display — small, unobtrusive
+    // BPM display
     const [lr, lg, lb] = this.currentTheme.segmentRGB;
-    const digitH = Math.min(L.width * 0.025, L.height * 0.03);
-    const elementGap = digitH * 0.6;
+    const digitH = Math.max(16, Math.min(L.width * 0.04, L.height * 0.04));
+    const elementGap = digitH * 0.4;
     const bpmY = L.inlineTimerY;
     drawBPM(ctx, bpm, L.centerX, bpmY, digitH, this.currentTheme);
 
     // Beat indicator dots (4 dots, current one highlighted)
-    const dotR = Math.max(2, L.height * 0.004);
-    const dotGap = dotR * 5;
+    const dotR = Math.max(2.5, digitH * 0.08);
+    const dotGap = dotR * 4.5;
     const dotY = bpmY + digitH / 2 + elementGap + dotR;
     const dotsStartX = L.centerX - (3 * dotGap) / 2;
     for (let i = 0; i < 4; i++) {
