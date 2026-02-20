@@ -1465,12 +1465,19 @@
   }
   function makeHold(setter) {
     let iv = null;
+    let timeout = null;
     return {
       start(d) {
         setter(d);
-        iv = setInterval(() => setter(d), 80);
+        timeout = setTimeout(() => {
+          iv = setInterval(() => setter(d), 80);
+        }, 400);
       },
       stop() {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
         if (iv) {
           clearInterval(iv);
           iv = null;

@@ -180,9 +180,18 @@ function injectStyles(): void {
 
 function makeHold(setter: (d: number) => void) {
   let iv: ReturnType<typeof setInterval> | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
   return {
-    start(d: number) { setter(d); iv = setInterval(() => setter(d), 80); },
-    stop() { if (iv) { clearInterval(iv); iv = null; } },
+    start(d: number) {
+      setter(d);
+      timeout = setTimeout(() => {
+        iv = setInterval(() => setter(d), 80);
+      }, 400);
+    },
+    stop() {
+      if (timeout) { clearTimeout(timeout); timeout = null; }
+      if (iv) { clearInterval(iv); iv = null; }
+    },
   };
 }
 
