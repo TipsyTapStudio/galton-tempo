@@ -1546,6 +1546,17 @@
     drawer.className = "gt-drawer";
     const drawerContent = document.createElement("div");
     drawerContent.className = "gt-drawer-content";
+    const logoSection = document.createElement("div");
+    logoSection.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;";
+    logoSection.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28" style="flex-shrink:0">
+      <circle cx="16" cy="16" r="16" fill="#FF1493"/>
+      <polygon points="9,7 23,7 16,16" fill="#000" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+      <polygon points="16,16 9,25 23,25" fill="none" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+    </svg>
+    <span style="font-size:14px;font-weight:700;letter-spacing:3px;color:rgba(255,255,255,0.70)">GALTON-TEMPO</span>
+  `;
+    drawerContent.appendChild(logoSection);
     const tempoSection = document.createElement("div");
     tempoSection.className = "gt-section";
     tempoSection.innerHTML = '<div class="gt-section-title">Tempo</div>';
