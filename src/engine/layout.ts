@@ -189,7 +189,8 @@ export function computeHopperGrains(
   let y = L.hopperBottom - grainR * 1.5;
 
   while (grains.length < displayCount) {
-    if (y < L.hopperTop + grainR * 3) break;
+    const clipMargin = Math.max(grainR * 3, (L.hopperBottom - L.hopperTop) * 0.25);
+    if (y < L.hopperTop + clipMargin) break;
     const hw = gaussianHW(y, L);
     const usableW = hw * 0.88;
     const xOff = (row % 2 === 1) ? d * 0.5 : 0;
