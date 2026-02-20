@@ -18,6 +18,8 @@ export interface ConsoleController {
   onBarsChange: ((bars: number) => void) | null;
   onRowsChange: ((rows: number) => void) | null;
   onSoundChange: ((sound: SoundType) => void) | null;
+  onPegEnabledChange: ((enabled: boolean) => void) | null;
+  onPegVolumeChange: ((volume: number) => void) | null;
   onThemeChange: ((name: string) => void) | null;
   onModeChange: ((mode: string) => void) | null;
   onShareURL: (() => void) | null;
@@ -168,6 +170,23 @@ function injectStyles(): void {
       cursor: pointer; transition: all 0.15s; margin-bottom: 8px;
     }
     .gt-sys-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.60); border-color: rgba(255,255,255,0.10); }
+
+    .gt-toggle-row { display: flex; align-items: center; justify-content: space-between; min-height: 36px; margin-bottom: 4px; }
+    .gt-toggle {
+      position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0;
+    }
+    .gt-toggle input { opacity: 0; width: 0; height: 0; }
+    .gt-toggle-track {
+      position: absolute; inset: 0; border-radius: 10px;
+      background: rgba(255,255,255,0.08); transition: background 0.2s;
+    }
+    .gt-toggle-thumb {
+      position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: rgba(255,255,255,0.35);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .gt-toggle input:checked ~ .gt-toggle-track { background: color-mix(in srgb, var(--accent, #fff) 30%, transparent); }
+    .gt-toggle input:checked ~ .gt-toggle-thumb { transform: translateX(16px); background: var(--accent, rgba(255,255,255,0.80)); }
 
     .gt-credits {
       position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
@@ -582,6 +601,56 @@ export function createConsole(
   soundRow.appendChild(soundSelect);
   tempoSection.appendChild(soundRow);
 
+  // Peg sound toggle
+  const pegRow = document.createElement('div');
+  pegRow.className = 'gt-toggle-row';
+  const pegLabel = document.createElement('span');
+  pegLabel.className = 'gt-field-label';
+  pegLabel.textContent = 'Peg Sound';
+  pegRow.appendChild(pegLabel);
+
+  const pegToggle = document.createElement('label');
+  pegToggle.className = 'gt-toggle';
+  const pegCheck = document.createElement('input');
+  pegCheck.type = 'checkbox';
+  pegCheck.checked = true;
+  const pegTrack = document.createElement('span');
+  pegTrack.className = 'gt-toggle-track';
+  const pegThumb = document.createElement('span');
+  pegThumb.className = 'gt-toggle-thumb';
+  pegToggle.appendChild(pegCheck);
+  pegToggle.appendChild(pegTrack);
+  pegToggle.appendChild(pegThumb);
+  pegRow.appendChild(pegToggle);
+  tempoSection.appendChild(pegRow);
+
+  pegCheck.addEventListener('change', () => {
+    ctrl.onPegEnabledChange?.(pegCheck.checked);
+    pegVolSlider.disabled = !pegCheck.checked;
+  });
+
+  // Peg volume slider
+  const pegVolRow = document.createElement('div');
+  pegVolRow.className = 'gt-field-row';
+  const pegVolLabel = document.createElement('span');
+  pegVolLabel.className = 'gt-field-label';
+  pegVolLabel.textContent = 'Peg Vol';
+  pegVolLabel.style.fontSize = '10px';
+  pegVolRow.appendChild(pegVolLabel);
+  const pegVolSlider = document.createElement('input');
+  pegVolSlider.type = 'range';
+  pegVolSlider.className = 'gt-slider-input';
+  pegVolSlider.min = '0';
+  pegVolSlider.max = '100';
+  pegVolSlider.step = '1';
+  pegVolSlider.value = '50';
+  pegVolSlider.style.flex = '1';
+  pegVolSlider.addEventListener('input', () => {
+    ctrl.onPegVolumeChange?.(parseInt(pegVolSlider.value, 10) / 100);
+  });
+  pegVolRow.appendChild(pegVolSlider);
+  tempoSection.appendChild(pegVolRow);
+
   // Physics preset
   const presetRow = document.createElement('div');
   presetRow.className = 'gt-field-row';
@@ -689,6 +758,7 @@ export function createConsole(
     hide() { controls.classList.add('hidden'); if (drawerOpen) closeDrawer(); },
     onStart: null, onPause: null, onStop: null,
     onBpmChange: null, onBarsChange: null, onRowsChange: null, onSoundChange: null,
+    onPegEnabledChange: null, onPegVolumeChange: null,
     onThemeChange: null, onModeChange: null, onShareURL: null, onResetDefaults: null,
     setPaused(p: boolean) {
       startBtn.style.display = p ? '' : 'none';

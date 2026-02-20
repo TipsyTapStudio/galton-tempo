@@ -1221,7 +1221,10 @@
       this.ctx = null;
       this.masterGain = null;
       this.soundType = "click";
+      this.pegEnabled = true;
+      this.pegVolume = 0.5;
     }
+    // 0..1, maps to gain 0..0.06
     /** Must be called after a user gesture (tap/click). */
     async ensureContext() {
       if (!this.ctx) {
@@ -1247,7 +1250,7 @@
     }
     /** Play peg collision sound. Pitch mapped from row/col position. */
     playPegHit(row, col, numRows) {
-      if (!this.ctx || !this.masterGain) return;
+      if (!this.ctx || !this.masterGain || !this.pegEnabled) return;
       const now = this.ctx.currentTime;
       const rowFrac = row / Math.max(1, numRows - 1);
       const freq = 200 + rowFrac * 1800;
@@ -1255,8 +1258,9 @@
       const osc = this.ctx.createOscillator();
       osc.type = "triangle";
       osc.frequency.value = freq;
+      const pegGain = this.pegVolume * 0.06;
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.setValueAtTime(pegGain, now);
       gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.04);
       const pan = this.ctx.createStereoPanner();
       pan.pan.value = Math.max(-1, Math.min(1, colFrac * 0.6));
@@ -1456,6 +1460,23 @@
       cursor: pointer; transition: all 0.15s; margin-bottom: 8px;
     }
     .gt-sys-btn:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.60); border-color: rgba(255,255,255,0.10); }
+
+    .gt-toggle-row { display: flex; align-items: center; justify-content: space-between; min-height: 36px; margin-bottom: 4px; }
+    .gt-toggle {
+      position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0;
+    }
+    .gt-toggle input { opacity: 0; width: 0; height: 0; }
+    .gt-toggle-track {
+      position: absolute; inset: 0; border-radius: 10px;
+      background: rgba(255,255,255,0.08); transition: background 0.2s;
+    }
+    .gt-toggle-thumb {
+      position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: rgba(255,255,255,0.35);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .gt-toggle input:checked ~ .gt-toggle-track { background: color-mix(in srgb, var(--accent, #fff) 30%, transparent); }
+    .gt-toggle input:checked ~ .gt-toggle-thumb { transform: translateX(16px); background: var(--accent, rgba(255,255,255,0.80)); }
 
     .gt-credits {
       position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
@@ -1838,6 +1859,50 @@
     });
     soundRow.appendChild(soundSelect);
     tempoSection.appendChild(soundRow);
+    const pegRow = document.createElement("div");
+    pegRow.className = "gt-toggle-row";
+    const pegLabel = document.createElement("span");
+    pegLabel.className = "gt-field-label";
+    pegLabel.textContent = "Peg Sound";
+    pegRow.appendChild(pegLabel);
+    const pegToggle = document.createElement("label");
+    pegToggle.className = "gt-toggle";
+    const pegCheck = document.createElement("input");
+    pegCheck.type = "checkbox";
+    pegCheck.checked = true;
+    const pegTrack = document.createElement("span");
+    pegTrack.className = "gt-toggle-track";
+    const pegThumb = document.createElement("span");
+    pegThumb.className = "gt-toggle-thumb";
+    pegToggle.appendChild(pegCheck);
+    pegToggle.appendChild(pegTrack);
+    pegToggle.appendChild(pegThumb);
+    pegRow.appendChild(pegToggle);
+    tempoSection.appendChild(pegRow);
+    pegCheck.addEventListener("change", () => {
+      ctrl.onPegEnabledChange?.(pegCheck.checked);
+      pegVolSlider.disabled = !pegCheck.checked;
+    });
+    const pegVolRow = document.createElement("div");
+    pegVolRow.className = "gt-field-row";
+    const pegVolLabel = document.createElement("span");
+    pegVolLabel.className = "gt-field-label";
+    pegVolLabel.textContent = "Peg Vol";
+    pegVolLabel.style.fontSize = "10px";
+    pegVolRow.appendChild(pegVolLabel);
+    const pegVolSlider = document.createElement("input");
+    pegVolSlider.type = "range";
+    pegVolSlider.className = "gt-slider-input";
+    pegVolSlider.min = "0";
+    pegVolSlider.max = "100";
+    pegVolSlider.step = "1";
+    pegVolSlider.value = "50";
+    pegVolSlider.style.flex = "1";
+    pegVolSlider.addEventListener("input", () => {
+      ctrl.onPegVolumeChange?.(parseInt(pegVolSlider.value, 10) / 100);
+    });
+    pegVolRow.appendChild(pegVolSlider);
+    tempoSection.appendChild(pegVolRow);
     const presetRow = document.createElement("div");
     presetRow.className = "gt-field-row";
     presetRow.innerHTML = '<span class="gt-field-label">Physics</span>';
@@ -1942,6 +2007,8 @@
       onBarsChange: null,
       onRowsChange: null,
       onSoundChange: null,
+      onPegEnabledChange: null,
+      onPegVolumeChange: null,
       onThemeChange: null,
       onModeChange: null,
       onShareURL: null,
@@ -2130,6 +2197,12 @@
     audio.soundType = sound;
     params.sound = sound;
     writeParams(params);
+  };
+  consoleCtrl.onPegEnabledChange = (enabled) => {
+    audio.pegEnabled = enabled;
+  };
+  consoleCtrl.onPegVolumeChange = (volume) => {
+    audio.pegVolume = volume;
   };
   consoleCtrl.onModeChange = (modeName) => {
     applyPreset(modeName);

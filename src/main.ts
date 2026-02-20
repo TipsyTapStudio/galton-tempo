@@ -171,6 +171,14 @@ consoleCtrl.onSoundChange = (sound: SoundType) => {
   writeParams(params);
 };
 
+consoleCtrl.onPegEnabledChange = (enabled: boolean) => {
+  audio.pegEnabled = enabled;
+};
+
+consoleCtrl.onPegVolumeChange = (volume: number) => {
+  audio.pegVolume = volume;
+};
+
 consoleCtrl.onModeChange = (modeName: string) => {
   applyPreset(modeName);
   params.mode = modeName;

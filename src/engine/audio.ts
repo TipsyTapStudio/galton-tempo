@@ -13,6 +13,8 @@ export class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   soundType: SoundType = 'click';
+  pegEnabled: boolean = true;
+  pegVolume: number = 0.5;  // 0..1, maps to gain 0..0.06
 
   /** Must be called after a user gesture (tap/click). */
   async ensureContext(): Promise<void> {
@@ -42,7 +44,7 @@ export class AudioEngine {
 
   /** Play peg collision sound. Pitch mapped from row/col position. */
   playPegHit(row: number, col: number, numRows: number): void {
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.masterGain || !this.pegEnabled) return;
     const now = this.ctx.currentTime;
 
     // Map row to frequency: higher rows = higher pitch
@@ -57,8 +59,9 @@ export class AudioEngine {
     osc.type = 'triangle';
     osc.frequency.value = freq;
 
+    const pegGain = this.pegVolume * 0.06;
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.03, now);
+    gain.gain.setValueAtTime(pegGain, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
 
     // Pan

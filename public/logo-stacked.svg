@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 180">
+  <style>
+    .brand-text { fill: #333; }
+    @media (prefers-color-scheme: dark) {
+      .brand-text { fill: #eeeeee; }
+    }
+  </style>
+  <!-- Icon (scaled from 32x32 to 80x80, centered horizontally) -->
+  <g transform="translate(40,8) scale(2.5)">
+    <circle cx="16" cy="16" r="16" fill="#FF1493"/>
+    <polygon points="9,7 23,7 16,16" fill="#000" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="16,16 9,25 23,25" fill="none" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+  <!-- Text line 1 -->
+  <text class="brand-text" x="80" y="122" text-anchor="middle" font-family="'Courier New', 'Consolas', monospace" font-size="28" font-weight="bold" letter-spacing="4">GALTON</text>
+  <!-- Text line 2 -->
+  <text class="brand-text" x="80" y="154" text-anchor="middle" font-family="'Courier New', 'Consolas', monospace" font-size="28" font-weight="bold" letter-spacing="4">TEMPO</text>
+</svg>
